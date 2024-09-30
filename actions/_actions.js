@@ -80,8 +80,6 @@ export async function backup(backupOptions, destinationPath) {
       }
     }
 
-    console.log("Backing up files now...");
-
     const selectedLocations = backupSrcs.filter(
       (location) => backupOptions[location.key]
     );

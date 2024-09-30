@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CheckIcon, DatabaseBackup, Loader2, XIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Licorice } from "next/font/google";
+import { ModeToggle } from "./theme-toggle";
 import {
   Card,
   CardContent,
@@ -54,6 +55,12 @@ export default function CardComponent() {
   }
 
   useEffect(() => {
+    // Load localStorage checkbox options and destination path
+    const storedOptions = JSON.parse(localStorage.getItem("backupOptions"));
+    if (storedOptions) {
+      setBackupOptions(storedOptions);
+    }
+
     const fetchDrives = async () => {
       const drives = await getDrives();
       console.log(drives);
@@ -69,12 +76,6 @@ export default function CardComponent() {
           socket.disconnect();
         }
       };
-    }
-
-    // Load localStorage checkbox options and destination path
-    const storedOptions = JSON.parse(localStorage.getItem("backupOptions"));
-    if (storedOptions) {
-      setBackupOptions(storedOptions);
     }
   }, []);
 
@@ -153,6 +154,8 @@ export default function CardComponent() {
 
   return (
     <div className="flex flex-col justify-center items-center h-[69vh] bg--background">
+      {" "}
+      <ModeToggle />
       <div
         className={cn(
           licorice.className,
