@@ -126,7 +126,7 @@ export async function getDrives() {
   }
 }
 
-export async function getDeviceStatus(driveInput) {
+export async function getDeviceStatus() {
   const client = Adb.createClient();
   try {
     const devices = await client.listDevices();
@@ -155,30 +155,3 @@ export async function startAdbServer() {
     return { isRunning: false };
   }
 }
-
-// export async function trackDevice() {
-//   try {
-//     const tracker = await client.trackDevices();
-//     let deviceStatus = { connected: [], disconnected: [] };
-
-//     tracker.on("add", (device) => {
-//       console.log("Device %s was plugged in", device.id);
-//       deviceStatus.connected.push(device.id);
-//       fs.writeFileSync("device-status.json", JSON.stringify(deviceStatus));
-//     });
-
-//     tracker.on("remove", (device) => {
-//       console.log("Device %s was unplugged", device.id);
-//       deviceStatus.disconnected.push(device.id);
-//       fs.writeFileSync("device-status.json", JSON.stringify(deviceStatus));
-//     });
-
-//     tracker.on("end", () => {
-//       console.log("Tracking stopped");
-//     });
-
-//     return tracker;
-//   } catch (err) {
-//     console.error("Something went wrong:", err.stack);
-//   }
-// }

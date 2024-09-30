@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { backup, getDrives } from "../../actions/_actions";
+import { backup, getDrives, getDeviceStatus } from "../../actions/_actions";
 import { Button } from "@/components/ui/button";
 import { CheckIcon, DatabaseBackup, Loader2, XIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -63,10 +63,17 @@ export default function CardComponent() {
 
     const fetchDrives = async () => {
       const drives = await getDrives();
-      console.log(drives);
       setDrives(drives);
     };
     fetchDrives();
+
+    const fetchDeviceStatus = async () => {
+      const deviceId = await getDeviceStatus();
+      if (deviceId) {
+        setDeviceId(deviceId); // Set the connected deviceId
+      }
+    };
+    fetchDeviceStatus();
 
     if (io) {
       socketInitializer();
