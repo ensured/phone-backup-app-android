@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getDeviceStatus, backup, getDrives } from "../../actions/_actions";
+import { backup, getDrives } from "../../actions/_actions";
 import { Button } from "@/components/ui/button";
 import { CheckIcon, DatabaseBackup, Loader2, XIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
