@@ -100,8 +100,9 @@ export default function CardComponent() {
     if (backupOptions.destInputValue) {
       const driveLetter = backupOptions.destInputValue.slice(0, 2); // Assuming drive letter is in format like 'C:'
       setCheckedDrive(driveLetter);
+      localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
     }
-  }, [backupOptions.destInputValue]);
+  }, [backupOptions]);
 
   const handleCheckboxChange = (option) => {
     setBackupOptions((prev) => ({
@@ -196,7 +197,7 @@ export default function CardComponent() {
           )}
         </Button>
       </header>
-      <div className="flex justify-center items-center h-[calc(100vh-420px)]">
+      <div className="flex justify-center items-center h-[calc(100vh-228px)]">
         {" "}
         {/* Subtract header height */}
         <Card className="w-[372px]">

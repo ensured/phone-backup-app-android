@@ -18,7 +18,6 @@ export default async function SocketHandler(req, res) {
 
     tracker.on("add", (device) => {
       connectedDevices.push(device); // Add connected device to the list
-
       io.emit("device-status", { status: "connected", deviceId: device.id });
     });
 
