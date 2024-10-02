@@ -62,21 +62,37 @@ export async function backup(backupOptions, destinationPath) {
     };
   }
 
-  console.log(`Directory verified/created: ${destPathWindows}`);
-
   try {
     async function pullFilesRecursively(directory, outputDir) {
       try {
-        // Ensure paths are quoted to handle spaces
         const escapedDirectory = escapeBackslashes(directory);
         const escapedOutputDir = escapeBackslashes(outputDir);
-        console.log(
-          `Pulling files from "${escapedDirectory}" to "${escapedOutputDir}"`
+        const output = execSync(
+          `adb pull "${escapedDirectory}" "${escapedOutputDir}"`
         );
-        execSync(`adb pull "${escapedDirectory}" "${escapedOutputDir}"`);
-      } catch (err) {
-        console.error("Error pulling files:", err.message);
-        return;
+        const outputString = output.toString();
+
+        if (outputString.includes("device unauthorized")) {
+          return {
+            completed: false,
+            message:
+              "Device is unauthorized. Please make sure you have enabled USB debugging on the device and that your device is connected to your computer via USB.",
+          };
+        }
+
+        return { completed: true }; // File pull successful
+      } catch (e) {
+        if (e.message.includes("device unauthorized")) {
+          return {
+            completed: false,
+            message:
+              "Device is unauthorized. Please check for a confirmation dialog on your device.",
+          };
+        }
+        return {
+          completed: false,
+          message: e.message,
+        };
       }
     }
 
@@ -90,15 +106,19 @@ export async function backup(backupOptions, destinationPath) {
 
       fs.mkdirSync(outputDir, { recursive: true });
 
-      await pullFilesRecursively(src, outputDir);
-      console.log(`Backup of ${dest} completed\n`);
+      const pullResult = await pullFilesRecursively(src, outputDir);
+
+      // Check for any errors from pulling files
+      if (!pullResult.completed) {
+        return pullResult; // Exit early if an error occurred
+      }
     }
+
     return {
       completed: true,
       message: "Backup completed successfully",
     };
   } catch (error) {
-    console.error("An error occurred during backup:", error.message);
     return {
       completed: false,
       message: "An error occurred during backup",
