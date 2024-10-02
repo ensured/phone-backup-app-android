@@ -69,6 +69,13 @@ body {
   }
 }
 
+.rainbow-shadow {
+  box-shadow: 
+    0 0px 0px rgba(255, 0, 0, 0.5),   /* Red */
+    0 1.5px 3px rgba(75, 0, 130, 0.5),  /* Indigo */
+    0 0px 1px rgba(238, 130, 238, 0.5); /* Violet */
+}
+
 @layer base {
   * {
     @apply border-border;

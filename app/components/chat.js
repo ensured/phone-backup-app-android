@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { backup, getDrives, getDeviceStatus } from "../../actions/_actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "../../components/ui/button";
 import {
   CheckIcon,
   Sun,
@@ -170,11 +170,15 @@ export default function CardComponent() {
 
   return (
     <>
-      <header className="flex items-center justify-between p-4 mb-10 bg-background text-foreground shadow-md dark:bg-zinc-900">
+      <header
+        className={`flex items-center justify-between p-4 text-foreground bg--background ${
+          theme === "dark" ? "rainbow-shadow" : "shadow-md"
+        }`}
+      >
         <h1
           className={cn(
             adlam.className,
-            "text-2xl flex flex-row items-center select-none text-sky-300 "
+            "text-2xl flex flex-row items-center select-none text--primary"
           )}
         >
           <DatabaseBackup className="mr-3 size-6" /> Backup Buddy
@@ -208,7 +212,7 @@ export default function CardComponent() {
                       <CardDescription className="select-none">
                         Backup Source
                       </CardDescription>
-                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-300 rounded-r-[1.75rem]">
+                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-200 dark:hover:bg-sky-500 rounded-r-[1.75rem]">
                         <Checkbox
                           id="Camera"
                           checked={backupOptions.Camera}
@@ -222,7 +226,7 @@ export default function CardComponent() {
                           /DCIM/Camera
                         </label>
                       </div>
-                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-300 rounded-r-[1.75rem]">
+                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-200 dark:hover:bg-sky-500 rounded-r-[1.75rem]">
                         <Checkbox
                           id="Downloads"
                           checked={backupOptions.Download}
@@ -238,7 +242,7 @@ export default function CardComponent() {
                           /Download
                         </label>
                       </div>
-                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-300 rounded-r-[1.75rem]">
+                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-200 dark:hover:bg-sky-500 rounded-r-[1.75rem]">
                         <Checkbox
                           id="Pictures"
                           checked={backupOptions.Pictures}
@@ -274,7 +278,7 @@ export default function CardComponent() {
                                   onCheckedChange={() =>
                                     handleDriveCheckboxChange(driveLetter)
                                   }
-                                  className="appearance-none w-6 h-6 border border-gray-300 rounded-sm checked:bg-sky-400 focus:ring-2 focus:ring-sky-400"
+                                  className="appearance-none w-6 h-6 border border-gray-300 rounded-sm checked:bg-green-400 focus:ring-2 focus:ring-green-400"
                                 />
                               </div>
                               <label
@@ -305,7 +309,7 @@ export default function CardComponent() {
                   <div
                     className={`${
                       deviceId ? "text-green-500 " : "text-red-500"
-                    } font-medium  flex items-center bg-zinc-900 rounded-md`}
+                    } font-semibold flex items-center border rounded-md`}
                   >
                     <Button
                       disabled={
@@ -341,7 +345,7 @@ export default function CardComponent() {
                         "Backup"
                       )}
                     </Button>
-                    <div className="px-4 border-l flex gap-1 items-center justify-center h-[36px] select-none">
+                    <div className="ml-3 flex justify-center select-none">
                       {deviceId ? (
                         <div className="text-md flex gap-1 items-center">
                           {deviceId} connected <CheckIcon />
