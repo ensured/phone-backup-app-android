@@ -169,7 +169,7 @@ export default function CardComponent() {
   };
 
   return (
-    <>
+    <div className="h-screen flex flex-col bg--background">
       <header
         className={`flex items-center justify-between p-4 text-foreground bg--background ${
           theme === "dark" ? "rainbow-shadow" : "shadow-md"
@@ -196,13 +196,14 @@ export default function CardComponent() {
           )}
         </Button>
       </header>
-      <div className="flex flex-col justify-center items-center bg--background">
+      <div className="flex justify-center items-center h-[calc(100vh-420px)]">
         {" "}
+        {/* Subtract header height */}
         <Card className="w-[372px]">
           <CardHeader>{/* <CardTitle>Phone Backup</CardTitle> */}</CardHeader>
           <CardContent>
             <form>
-              <div className="grid w-full items-center gap-4">
+              <div className="grid w-full gap-4">
                 <div className="flex flex-col ">
                   <div
                     className="pb-6 grid grid-cols-2 select-none"
@@ -379,6 +380,6 @@ export default function CardComponent() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   );
 }
