@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ADLaM_Display } from "next/font/google";
 import {
   Card,
+  CardTitle,
   CardContent,
   CardDescription,
   CardHeader,
@@ -201,7 +202,9 @@ export default function CardComponent() {
         {" "}
         {/* Subtract header height */}
         <Card className="w-[372px]">
-          <CardHeader>{/* <CardTitle>Phone Backup</CardTitle> */}</CardHeader>
+          <CardHeader>
+            <CardTitle>Phone Backup</CardTitle>
+          </CardHeader>
           <CardContent>
             <form>
               <div className="grid w-full gap-4">
@@ -212,9 +215,9 @@ export default function CardComponent() {
                   >
                     <div className="mr-4">
                       <CardDescription className="select-none">
-                        Backup Source
+                        Source
                       </CardDescription>
-                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-200 dark:hover:bg-sky-500 rounded-r-[1.75rem]">
+                      <div className="flex items-center space-x-2 mb-0.5 dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]">
                         <Checkbox
                           id="Camera"
                           checked={backupOptions.Camera}
@@ -228,7 +231,7 @@ export default function CardComponent() {
                           /DCIM/Camera
                         </label>
                       </div>
-                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-200 dark:hover:bg-sky-500 rounded-r-[1.75rem]">
+                      <div className="flex items-center space-x-2 mb-0.5 dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]">
                         <Checkbox
                           id="Downloads"
                           checked={backupOptions.Download}
@@ -244,7 +247,7 @@ export default function CardComponent() {
                           /Download
                         </label>
                       </div>
-                      <div className="flex items-center space-x-2 mb-0.5 hover:bg-sky-200 dark:hover:bg-sky-500 rounded-r-[1.75rem]">
+                      <div className="flex items-center space-x-2 mb-0.5 dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]">
                         <Checkbox
                           id="Pictures"
                           checked={backupOptions.Pictures}
@@ -264,28 +267,28 @@ export default function CardComponent() {
 
                     <div>
                       <CardDescription className="select-none">
-                        Backup Destination
+                        Destination
                       </CardDescription>
                       <div className="flex items-center space-x-2 select-none">
                         {drives.length > 0 ? (
                           drives.map((driveLetter) => (
                             <div
                               key={driveLetter}
-                              className="flex items-center space-x-2.5"
+                              className="flex items-center space-x-2"
                             >
-                              <div className="relative">
+                              <div className="relative flex items-center justify-center ">
                                 <Checkbox
                                   id={driveLetter}
                                   checked={checkedDrive === driveLetter}
                                   onCheckedChange={() =>
                                     handleDriveCheckboxChange(driveLetter)
                                   }
-                                  className="appearance-none w-6 h-6 border border-gray-300 rounded-sm checked:bg-green-400 focus:ring-2 focus:ring-green-400"
+                                  className="appearance-none w-6 h-6 border border-gray-300 rounded-sm focus:mb-[0.29rem] mb-[0.29rem]"
                                 />
                               </div>
                               <label
                                 htmlFor={driveLetter}
-                                className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                className="cursor-pointer text-sm "
                               >
                                 {driveLetter}
                               </label>
