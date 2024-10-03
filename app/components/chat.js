@@ -73,9 +73,16 @@ export default function CardComponent() {
   const selectOptionsRef = useRef(null);
   const handlePathsSelectClick = async (e) => {
     e.preventDefault();
-    const directories = await getFoldersInDirectory(
+    const { status, directories } = await getFoldersInDirectory(
       backupOptions.destInputValue
     );
+    if (status === "error") {
+      toast({
+        title: "Folder Not Found",
+        status: "error",
+      });
+      return;
+    }
     setSelectPathsAvailable(directories);
   };
 
@@ -315,18 +322,19 @@ export default function CardComponent() {
                           </div>
                         )}
                       </div>
-                      <div className="relative flex flex-col items-center space-x-2 select-none">
-                        <div className="absolute flex flex-col mb-4">
+                      <div className="relative flex flex-col items-center space-x-2 select-none ">
+                        <div className="absolute flex flex-col mb-4 max-w-[180px] right-0 left-0">
                           <Input
                             autoComplete="true"
                             onChange={handleDestInputChange}
                             type="text"
                             value={backupOptions.destInputValue}
-                            className=" "
+                            className="border-[#895dd4f5] border rounded-b-none border-b-0  focus-visible:border-green-500 focus-visible:border-b "
                           />
                           <div>
                             <select
                               onClick={handlePathsSelectClick}
+                              className="w-[160px] text-sm font-semibold text-[#895dd4f5] border border-[#895dd4f5] flex focus-visible:border-green-500"
                               onChange={(e) => {
                                 if (
                                   backupOptions.destInputValue.endsWith("\\")
@@ -346,7 +354,11 @@ export default function CardComponent() {
                                 Select a folder
                               </option>
                               {selectPathsAvailable.map((path) => (
-                                <option key={path} value={path}>
+                                <option
+                                  key={path}
+                                  value={path}
+                                  className="text-lg w-full text-primary "
+                                >
                                   {path}
                                 </option>
                               ))}

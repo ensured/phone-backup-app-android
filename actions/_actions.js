@@ -131,14 +131,18 @@ export async function getFoldersInDirectory(directory) {
   try {
     // Wrap the directory in double quotes to handle spaces
     const output = execSync(`dir /ad /b "${directory}"`);
-    const files = output
+    const directories = output
       .toString()
       .split("\r\n")
       .filter((line) => line); // Filter out empty lines
-    return files;
+
+    console.log({ status: "success", directories });
+    return { status: "success", directories };
   } catch (error) {
-    console.error("Error getting files in directory:", error);
-    return [];
+    return {
+      status: "error",
+      message: `Error getting folders in directory: ${directory}`,
+    };
   }
 }
 
