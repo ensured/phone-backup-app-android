@@ -14,6 +14,7 @@ import {
   DatabaseBackup,
   Loader2,
   XIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ADLaM_Display } from "next/font/google";
@@ -192,6 +193,15 @@ export default function CardComponent() {
     setCheckedDrive(driveLetter);
   };
 
+  const handleClearInput = (e) => {
+    e.preventDefault();
+    setBackupOptions((prev) => ({
+      ...prev,
+      destInputValue: backupOptions.destInputValue.slice(0, 2),
+    }));
+    setCheckedDrive(null);
+  };
+
   return (
     <div className="h-screen flex flex-col bg--background">
       <header
@@ -223,7 +233,7 @@ export default function CardComponent() {
       <div className="flex justify-center items-center h-[calc(100vh-228px)]">
         {" "}
         {/* Subtract header height */}
-        <Card className="w-[372px]  border-purple-700 border-[0.5px] scale-110">
+        <Card className="w-[420px]  border-purple-700 border-[0.5px] scale-110">
           <CardHeader>
             <CardTitle>Phone Backup</CardTitle>
           </CardHeader>
@@ -289,7 +299,7 @@ export default function CardComponent() {
 
                     <div>
                       <CardDescription className="select-none">
-                        Destination
+                        Destination{" "}
                       </CardDescription>
                       <div className="flex items-center space-x-2 select-none">
                         {drives.length > 0 ? (
@@ -324,17 +334,25 @@ export default function CardComponent() {
                       </div>
                       <div className="relative flex flex-col items-center space-x-2 select-none ">
                         <div className="absolute flex flex-col mb-4 max-w-[180px] right-0 left-0">
-                          <Input
-                            autoComplete="true"
-                            onChange={handleDestInputChange}
-                            type="text"
-                            value={backupOptions.destInputValue}
-                            className="border-[#895dd4f5] border rounded-b-none border-b-0  focus-visible:border-green-500 focus-visible:border-b "
-                          />
+                          <div className="flex w-full justify-center items-center ">
+                            <Input
+                              autoComplete="true"
+                              onChange={handleDestInputChange}
+                              type="text"
+                              value={backupOptions.destInputValue}
+                              className="border-[#895dd4f5] border rounded-b-none border-b-0  focus-visible:border-green-500 focus-visible:border-b "
+                            />{" "}
+                            <div
+                              onClick={handleClearInput}
+                              className="hover:cursor-pointer absolute right-[-29px] py-2 px-1.5 hover:bg-red-900 rounded-t-md rounded-b-none"
+                            >
+                              <Trash2Icon size={"17"} />
+                            </div>
+                          </div>
                           <div>
                             <select
                               onClick={handlePathsSelectClick}
-                              className="w-[160px] text-sm font-semibold text-[#895dd4f5] border border-[#895dd4f5] flex focus-visible:border-green-500"
+                              className="w-[100%] text-sm font-semibold text-[#895dd4f5] border border-[#895dd4f5] flex focus-visible:border-green-500"
                               onChange={(e) => {
                                 if (
                                   backupOptions.destInputValue.endsWith("\\")
