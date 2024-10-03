@@ -3,6 +3,7 @@ import Adb from "@devicefarmer/adbkit";
 import { execSync } from "child_process";
 import generateDate from "../util/date";
 import fs from "fs";
+import { dir } from "console";
 
 // Backup source definitions
 const backupSrcs = [
@@ -123,6 +124,21 @@ export async function backup(backupOptions, destinationPath) {
       completed: false,
       message: "An error occurred during backup",
     };
+  }
+}
+
+export async function getFoldersInDirectory(directory) {
+  try {
+    // Wrap the directory in double quotes to handle spaces
+    const output = execSync(`dir /ad /b "${directory}"`);
+    const files = output
+      .toString()
+      .split("\r\n")
+      .filter((line) => line); // Filter out empty lines
+    return files;
+  } catch (error) {
+    console.error("Error getting files in directory:", error);
+    return [];
   }
 }
 

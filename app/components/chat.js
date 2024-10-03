@@ -1,6 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
-import { backup, getDrives, getDeviceStatus } from "../../actions/_actions";
+import { useEffect, useRef, useState } from "react";
+import {
+  backup,
+  getDrives,
+  getDeviceStatus,
+  getFoldersInDirectory,
+} from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import {
   CheckIcon,
@@ -40,6 +45,7 @@ export default function CardComponent() {
   const [backupEnded, setBackupEnded] = useState(false);
   const [drives, setDrives] = useState([]);
   const [checkedDrive, setCheckedDrive] = useState(null);
+  const [selectPathsAvailable, setSelectPathsAvailable] = useState([]);
   const [backupOptions, setBackupOptions] = useState({
     Camera: true,
     Download: true,
@@ -63,6 +69,15 @@ export default function CardComponent() {
       }
     });
   }
+
+  const selectOptionsRef = useRef(null);
+  const handlePathsSelectClick = async (e) => {
+    e.preventDefault();
+    const directories = await getFoldersInDirectory(
+      backupOptions.destInputValue
+    );
+    setSelectPathsAvailable(directories);
+  };
 
   useEffect(() => {
     // Load localStorage checkbox options and destination path
@@ -201,7 +216,7 @@ export default function CardComponent() {
       <div className="flex justify-center items-center h-[calc(100vh-228px)]">
         {" "}
         {/* Subtract header height */}
-        <Card className="w-[372px]">
+        <Card className="w-[372px]  border-purple-700 border-[0.5px] scale-110">
           <CardHeader>
             <CardTitle>Phone Backup</CardTitle>
           </CardHeader>
@@ -300,13 +315,44 @@ export default function CardComponent() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center space-x-2 select-none">
-                        <Input
-                          autoComplete="true"
-                          onChange={handleDestInputChange}
-                          type="text"
-                          value={backupOptions.destInputValue}
-                        />
+                      <div className="relative flex flex-col items-center space-x-2 select-none">
+                        <div className="absolute flex flex-col mb-4">
+                          <Input
+                            autoComplete="true"
+                            onChange={handleDestInputChange}
+                            type="text"
+                            value={backupOptions.destInputValue}
+                            className=" "
+                          />
+                          <div>
+                            <select
+                              onClick={handlePathsSelectClick}
+                              onChange={(e) => {
+                                if (
+                                  backupOptions.destInputValue.endsWith("\\")
+                                ) {
+                                  backupOptions.destInputValue =
+                                    backupOptions.destInputValue +
+                                    e.target.value;
+                                } else {
+                                  backupOptions.destInputValue =
+                                    backupOptions.destInputValue +
+                                    "\\" +
+                                    e.target.value;
+                                }
+                              }}
+                            >
+                              <option ref={selectOptionsRef} value="">
+                                Select a folder
+                              </option>
+                              {selectPathsAvailable.map((path) => (
+                                <option key={path} value={path}>
+                                  {path}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
