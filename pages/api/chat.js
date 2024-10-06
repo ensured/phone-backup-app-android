@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import Adb from "@devicefarmer/adbkit";
+import { startAdbServer } from "@/actions/_actions";
 
 let connectedDevices = []; // Track currently connected devices
 
@@ -12,7 +13,10 @@ export default async function SocketHandler(req, res) {
   const io = new Server(res.socket.server);
   res.socket.server.io = io;
 
+  const { output } = await startAdbServer();
+
   const client = Adb.createClient();
+
   try {
     const tracker = await client.trackDevices();
 
@@ -35,6 +39,12 @@ export default async function SocketHandler(req, res) {
 
   io.on("connection", (socket) => {
     console.log("Client connected to socket");
+    if (output === "No devices or emulators found") {
+      socket.emit("device-status", {
+        status: "No device connected",
+        deviceId: "",
+      });
+    }
 
     // Send current connected devices to the client on connection
     if (connectedDevices.length > 0) {

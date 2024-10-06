@@ -1,6 +1,6 @@
 "use server";
 import Adb from "@devicefarmer/adbkit";
-import { execSync } from "child_process";
+import { exec, execSync } from "child_process";
 import generateDate from "../util/date";
 import fs from "fs";
 import { dir } from "console";
@@ -178,20 +178,28 @@ export async function getDeviceStatus() {
 
 export async function startAdbServer() {
   try {
-    // Start the adb server
-    execSync("adb -P 5037 start-server");
+    // Start the adb server and suppress the output
+    execSync("adb -P 5037 start-server", { stdio: "ignore" });
 
     // Check if adb is running
     try {
-      const output = execSync("adb get-state").toString().trim();
-      const isRunning = output === "device";
+      const output = execSync("adb get-state", { stdio: "pipe" })
+        .toString()
+        .trim();
 
-      return { isRunning };
+      if (output === "unknown") {
+        return { output: "No devices or emulators found" };
+      }
+
+      return { output };
     } catch (error) {
-      return { isRunning: false };
+      // Handle specific adb error if no devices/emulators are found
+      if (error.message.includes("no devices/emulators found")) {
+        return { output: "No devices or emulators found" };
+      }
+      return { output: error.message };
     }
   } catch (error) {
-    console.error("Failed to start or check adb server:", error);
-    return { isRunning: false };
+    return { output: error.message };
   }
 }

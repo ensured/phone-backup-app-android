@@ -1,9 +1,7 @@
-import { startAdbServer } from "@/actions/_actions";
 import dynamic from "next/dynamic";
 const Chat = dynamic(() => import("../app/components/chat"), { ssr: false });
 
 const Page = async () => {
-  await startAdbServer();
   return (
     <>
       <Chat />

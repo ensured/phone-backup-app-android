@@ -67,6 +67,11 @@ export default function CardComponent() {
         setDeviceId(data.deviceId); // Set the connected deviceId
       } else if (data.status === "disconnected") {
         setDeviceId(""); // Clear the deviceId when disconnected
+      } else if (data.status === "No device connected") {
+        toast({
+          title: "Adb server running, please connect a device to get started.",
+          status: "error",
+        });
       }
     });
   }
