@@ -47,7 +47,7 @@ export default function CardComponent() {
 
   async function socketInitializer() {
     if (typeof window !== "undefined") {
-      await fetch("/api/chat");
+      await fetch("/api/deviceStatus");
       socket = io();
 
       socket.on("device-status", (data) => {

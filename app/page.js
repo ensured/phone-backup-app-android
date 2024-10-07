@@ -1,10 +1,10 @@
 import dynamic from "next/dynamic";
-const Chat = dynamic(() => import("../app/components/chat"), { ssr: false });
+const Backup = dynamic(() => import("./components/backup"), { ssr: false });
 
 const Page = async () => {
   return (
     <>
-      <Chat />
+      <Backup />
     </>
   );
 };
