@@ -8,7 +8,7 @@ import {
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-
+import cache from "memory-cache";
 import {
   CheckIcon,
   Sun,
@@ -19,7 +19,6 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ADLaM_Display } from "next/font/google";
 import {
   Card,
   CardTitle,
@@ -32,13 +31,7 @@ import Confetti from "react-confetti-boom";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import io from "socket.io-client";
-import { useTheme } from "next-themes";
-
-const adlam = ADLaM_Display({
-  subsets: ["latin"],
-  display: "swap",
-  weight: "400",
-});
+import Header from "./Header";
 
 let socket;
 
@@ -57,8 +50,6 @@ export default function Backup() {
   });
 
   const inputRef = useRef(null);
-
-  const { theme, setTheme } = useTheme();
 
   const { toast } = useToast();
 
@@ -82,26 +73,46 @@ export default function Backup() {
 
   const handlePathsSelectClick = async (e) => {
     e.preventDefault();
+
+    const cacheKey = `folders_${backupOptions.destInputValue}`; // Create a unique cache key based on the input value
+    const cachedResult = cache.get(cacheKey); // Try to get the result from the cache
+
+    if (cachedResult) {
+      // If there's a cached result, use it
+      setSelectPathsAvailable(cachedResult);
+      return;
+    }
+
     const { status, directories } = await getFoldersInDirectory(
       backupOptions.destInputValue
     );
+
     if (status === "error") {
       toast({
         status: "error",
         description: (
           <div className="flex flex-col">
-            <div>Folder Not Found</div>
-            <button
-              className="px-2 py-1 mt-2 bg-blue-500 text-white rounded"
-              onClick={handleClearInput}
-            >
-              Clear
-            </button>
+            <div>
+              <span className="text-red-600 font-bold text-lg">
+                Folder Not Found!
+              </span>
+              <Button
+                className="ml-2"
+                onClick={handleClearInput}
+                variant={"destructive"}
+                size={"lg"}
+              >
+                Clear input
+              </Button>
+            </div>
           </div>
         ),
       });
       return;
     }
+
+    // Cache the result for 60 seconds
+    cache.put(cacheKey, directories, 60000); // 60000ms = 60 seconds
     setSelectPathsAvailable(directories);
   };
 
@@ -159,10 +170,7 @@ export default function Backup() {
     // Save updated backup options to localStorage
     localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
 
-    const { completed, message } = await backup(
-      backupOptions,
-      backupOptions.destInputValue
-    );
+    // Get datetime
     const options = {
       weekday: "long",
       month: "long",
@@ -172,13 +180,32 @@ export default function Backup() {
       minute: "numeric",
       hour12: true,
     };
+
+    const startTime = new Date();
+
+    toast({
+      title: "Backup Started",
+      description: "Started at: " + new Date().toLocaleString("en-US", options),
+      duration: 86400,
+      variant: "primary",
+    });
+
+    const { completed, message } = await backup(
+      backupOptions,
+      backupOptions.destInputValue
+    );
+
     const formattedDate = new Date().toLocaleString("en-US", options);
+    const endTime = new Date();
+    const duration = endTime - startTime; // Calculate duration in milliseconds
 
     if (completed) {
       setBackupEnded(true);
       toast({
         title: message,
-        description: "Backed up at: " + formattedDate,
+        description: `Backed up at: ${formattedDate} (Duration: ${formatDuration(
+          duration
+        )})`,
         duration: 86400,
         variant: "success",
       });
@@ -192,6 +219,19 @@ export default function Backup() {
     }
     setBackupStarted(false);
   };
+
+  // Helper function to format duration in a human-readable format
+  function formatDuration(milliseconds) {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    const hoursStr = hours > 0 ? `${hours}h ` : "";
+    const minutesStr = minutes > 0 ? `${minutes}m ` : "";
+    const secondsStr = seconds % 60 ? `${seconds}s` : "";
+
+    return `${hoursStr}${minutesStr}${secondsStr}`;
+  }
 
   const handleDestInputChange = (event) => {
     setBackupOptions((prev) => ({
@@ -232,33 +272,7 @@ export default function Backup() {
 
   return (
     <div className="h-screen flex flex-col bg--background">
-      <header
-        className={`flex items-center justify-between p-4 text-foreground bg--background ${
-          theme === "dark" ? "rainbow-shadow" : "shadow-md"
-        }`}
-      >
-        <h1
-          className={cn(
-            adlam.className,
-            "text-2xl flex flex-row items-center select-none"
-          )}
-        >
-          <DatabaseBackup className="mr-3 size-6 text-purple-700/90 dark:text-purple-700/80" />{" "}
-          Backup Buddy
-        </h1>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-[1.2rem] w-[1.2rem]" />
-          ) : (
-            <Moon className="h-[1.2rem] w-[1.2rem]" />
-          )}
-        </Button>
-      </header>
+      <Header />
       <div className="flex justify-center items-center mt-40">
         {" "}
         {/* Subtract header height */}
@@ -364,7 +378,7 @@ export default function Backup() {
                             onChange={handleDestInputChange}
                             type="text"
                             value={backupOptions.destInputValue}
-                            className="dark:border-[#895dd4f5] border rounded-b-none border-b-0 pr-8 focus-visible:border-[#20C20E] focus-visible:border-b"
+                            className="dark:border-[#895dd4f5] border rounded-b-none border-b-0 pr-8 focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] focus-visible:border-b"
                           />
 
                           {/* Trashcan Icon inside the Input */}
@@ -378,16 +392,15 @@ export default function Backup() {
 
                         <select
                           onClick={handlePathsSelectClick}
-                          className="w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] rounded-b-sm"
+                          className="w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
                           onChange={(e) => {
                             if (backupOptions.destInputValue.endsWith("\\")) {
                               backupOptions.destInputValue =
                                 backupOptions.destInputValue + e.target.value;
                             } else {
                               backupOptions.destInputValue =
-                                backupOptions.destInputValue +
-                                "\\" +
-                                e.target.value;
+                                backupOptions.destInputValue + f;
+                              "\\" + e.target.value;
                             }
                           }}
                         >
@@ -416,7 +429,7 @@ export default function Backup() {
 
               <div
                 className={`${
-                  deviceId ? "text-[#20C20E]" : "text-[#ff6600]"
+                  deviceId ? "text-[#20C20E]" : "text-destructive"
                 } font-semibold flex items-center border rounded-md`}
               >
                 <Button

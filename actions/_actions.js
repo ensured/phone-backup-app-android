@@ -1,9 +1,8 @@
 "use server";
 import Adb from "@devicefarmer/adbkit";
-import { exec, execSync } from "child_process";
+import { execSync } from "child_process";
 import generateDate from "../util/date";
 import fs from "fs";
-import { dir } from "console";
 
 // Backup source definitions
 const backupSrcs = [
