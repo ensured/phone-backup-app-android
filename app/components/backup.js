@@ -39,6 +39,7 @@ export default function Backup() {
   const [drives, setDrives] = useState([]);
   const [checkedDrive, setCheckedDrive] = useState(null);
   const [selectPathsAvailable, setSelectPathsAvailable] = useState([]);
+  const [loadingFolders, setLoadingFolders] = useState(false);
   const [backupOptions, setBackupOptions] = useState({
     Camera: true,
     Download: true,
@@ -46,7 +47,14 @@ export default function Backup() {
     destInputValue: "",
   });
 
+  const selectRef = useRef(null); // Create a ref for the select element
   const inputRef = useRef(null);
+  const videoRef = useRef(null);
+
+  // Set the playback rate directly when rendering
+  if (videoRef.current) {
+    videoRef.current.playbackRate = 0.55; // Set the video to 75% speed
+  }
 
   const { toast } = useToast();
 
@@ -65,16 +73,18 @@ export default function Backup() {
 
   const handlePathsSelectClick = async (e) => {
     e.preventDefault();
+    setLoadingFolders(true);
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     const cacheKey = `folders_${backupOptions.destInputValue}`; // Create a unique cache key based on the input value
     const cachedResult = cache.get(cacheKey); // Try to get the result from the cache
 
     if (cachedResult) {
-      // If there's a cached result, use it
       setSelectPathsAvailable(cachedResult);
+      selectRef.current.focus(); // Focus the select element
+      setLoadingFolders(false);
       return;
     }
-
     const { status, directories } = await getFoldersInDirectory(
       backupOptions.destInputValue
     );
@@ -100,13 +110,14 @@ export default function Backup() {
           </div>
         ),
       });
+      setLoadingFolders(false);
       return;
     }
 
-    // Cache the result for 60 seconds
-    cache.put(cacheKey, directories, 60000); // 60000ms = 60 seconds
+    cache.put(cacheKey, directories, 60000);
     setSelectPathsAvailable(directories);
-    inputRef.current.focus();
+    setLoadingFolders(false);
+    selectRef.current.focus(); // Focus the select element
   };
 
   useEffect(() => {
@@ -290,6 +301,19 @@ export default function Backup() {
   return (
     <div className="h-screen flex flex-col bg--background">
       <Header />
+      <video
+        ref={videoRef}
+        className="dark:opacity-5 opacity-5 absolute -z-20 top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto transform -translate-x-1/2 -translate-y-1/2 object-cover"
+        autoPlay
+        loop
+        muted
+        playsInline
+        playbackRate
+      >
+        <source src="/bg/videos/bg.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+
       <div className="flex justify-center items-center mt-24">
         <Card className="w-[420px] dark:border-purple-700 border-[0.5px]">
           <CardHeader>
@@ -411,6 +435,9 @@ export default function Backup() {
                           >
                             <Trash2Icon size={"17"} />
                           </Button>
+                          {loadingFolders && (
+                            <Loader2 className="absolute right-[0.3rem] flex size-6 rounded-full bg-zinc-950 animate-spin justify-center items-center" />
+                          )}
                           <Button
                             variant="ghost"
                             disabled={backupOptions.destInputValue.length === 3}
@@ -423,6 +450,7 @@ export default function Backup() {
 
                         <select
                           onClick={handlePathsSelectClick}
+                          ref={selectRef}
                           className="w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
                           onChange={(e) => {
                             if (backupOptions.destInputValue.endsWith("\\")) {
@@ -436,7 +464,9 @@ export default function Backup() {
                             }
                           }}
                         >
-                          <option value="">Select a folder</option>
+                          <option value="">
+                            {loadingFolders ? "loading" : "Select a folder"}
+                          </option>
                           {selectPathsAvailable.map((path) => (
                             <option
                               key={path}
