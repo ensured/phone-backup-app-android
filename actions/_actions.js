@@ -135,7 +135,6 @@ export async function getFoldersInDirectory(directory) {
       .split("\r\n")
       .filter((line) => line); // Filter out empty lines
 
-    console.log({ status: "success", directories });
     return { status: "success", directories };
   } catch (error) {
     return {

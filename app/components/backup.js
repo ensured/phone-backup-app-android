@@ -6,6 +6,7 @@ import {
   getDeviceStatus,
   getFoldersInDirectory,
 } from "../../actions/_actions";
+import Script from "next/script";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import cache from "memory-cache";
@@ -53,10 +54,10 @@ export default function Backup() {
 
   // Set the playback rate directly when rendering
   if (videoRef.current) {
-    videoRef.current.playbackRate = 0.55; // Set the video to 75% speed
+    videoRef.current.playbackRate = 0.75; // Set the video to 75% speed
   }
 
-  const { toast } = useToast();
+  const { toast, dismissAll } = useToast();
 
   async function socketInitializer() {
     await fetch("/api/deviceStatus");
@@ -74,7 +75,6 @@ export default function Backup() {
   const handlePathsSelectClick = async (e) => {
     e.preventDefault();
     setLoadingFolders(true);
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
     const cacheKey = `folders_${backupOptions.destInputValue}`; // Create a unique cache key based on the input value
     const cachedResult = cache.get(cacheKey); // Try to get the result from the cache
@@ -258,11 +258,14 @@ export default function Backup() {
 
   const handleClearInput = (e) => {
     e.preventDefault();
+
     setBackupOptions((prev) => ({
       ...prev,
       destInputValue: backupOptions.destInputValue.slice(0, 3),
     }));
+
     inputRef.current.focus();
+    dismissAll();
   };
 
   const handleNavBackAFolder = (e) => {
@@ -308,7 +311,6 @@ export default function Backup() {
         loop
         muted
         playsInline
-        playbackRate
       >
         <source src="/bg/videos/bg.mp4" type="video/mp4" />
         Your browser does not support the video tag.
@@ -436,7 +438,7 @@ export default function Backup() {
                             <Trash2Icon size={"17"} />
                           </Button>
                           {loadingFolders && (
-                            <Loader2 className="absolute right-[0.3rem] flex size-6 rounded-full bg-zinc-950 animate-spin justify-center items-center" />
+                            <Loader2 className="absolute right-[0.175rem] flex size-7 rounded-full dark:bg-zinc-950 animate-spin justify-center items-center" />
                           )}
                           <Button
                             variant="ghost"
@@ -553,6 +555,8 @@ export default function Backup() {
           </CardContent>
         </Card>
       </div>
+
+      <Script src="https://kit.fontawesome.com/749de1908e.js" />
     </div>
   );
 }

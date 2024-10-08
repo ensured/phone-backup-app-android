@@ -46,11 +46,15 @@ const Header = () => {
         </Button>
       </header>
 
-      <Image
-        src={bg}
-        alt="test"
-        className="absolute top-[68px] -z-10 object-cover h-[calc(100vh_-_68px)]"
-      />
+      {theme === "dark" ? (
+        <Image
+          src={bg}
+          alt="test"
+          className="absolute top-[68px] -z-10 object-cover h-[calc(100vh_-_68px)]"
+        />
+      ) : (
+        <div className="absolute h-full w-full bg-white -z-10"></div>
+      )}
     </>
   );
 };
