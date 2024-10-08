@@ -28,6 +28,7 @@
     "react": "^18",
     "react-confetti-boom": "^1.0.0",
     "react-dom": "^18",
+    "sharp": "^0.33.5",
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
     "stream": "^0.0.3",
