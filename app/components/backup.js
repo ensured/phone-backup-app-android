@@ -555,8 +555,6 @@ export default function Backup() {
           </CardContent>
         </Card>
       </div>
-
-      <Script src="https://kit.fontawesome.com/749de1908e.js" />
     </div>
   );
 }
