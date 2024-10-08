@@ -11,12 +11,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import cache from "memory-cache";
 import {
   CheckIcon,
-  Sun,
-  Moon,
-  DatabaseBackup,
   Loader2,
   XIcon,
   Trash2Icon,
+  ArrowBigLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -29,7 +27,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import Confetti from "react-confetti-boom";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import io from "socket.io-client";
 import Header from "./Header";
 
@@ -62,11 +59,6 @@ export default function Backup() {
         setDeviceId(data.deviceId); // Set the connected deviceId
       } else if (data.status === "disconnected") {
         setDeviceId(""); // Clear the deviceId when disconnected
-      } else if (data.status === "No device connected") {
-        toast({
-          title: "Adb server running, please connect a device to get started.",
-          status: "error",
-        });
       }
     });
   }
@@ -114,6 +106,7 @@ export default function Backup() {
     // Cache the result for 60 seconds
     cache.put(cacheKey, directories, 60000); // 60000ms = 60 seconds
     setSelectPathsAvailable(directories);
+    inputRef.current.focus();
   };
 
   useEffect(() => {
@@ -155,7 +148,7 @@ export default function Backup() {
       setCheckedDrive(driveLetter);
       localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
     }
-  }, [backupOptions]);
+  }, [backupOptions]); // Listen to destInputValue only
 
   const handleCheckboxChange = (option) => {
     setBackupOptions((prev) => ({
@@ -182,13 +175,6 @@ export default function Backup() {
     };
 
     const startTime = new Date();
-
-    toast({
-      title: "Backup Started",
-      description: "Started at: " + new Date().toLocaleString("en-US", options),
-      duration: 86400,
-      variant: "primary",
-    });
 
     const { completed, message } = await backup(
       backupOptions,
@@ -241,22 +227,21 @@ export default function Backup() {
   };
 
   const handleDriveCheckboxChange = (driveLetter) => {
-    // Extract the current path part after the drive letter
     const currentPath = backupOptions.destInputValue.slice(2);
     if (currentPath.endsWith("\\")) {
-      // Update the path with the new drive letter
       setBackupOptions((prev) => ({
         ...prev,
         destInputValue: driveLetter + currentPath,
       }));
       setCheckedDrive(driveLetter);
+      inputRef.current.focus();
       return;
     }
-    // Update the path with the new drive letter
     setBackupOptions((prev) => ({
       ...prev,
       destInputValue: driveLetter + currentPath + "\\",
     }));
+    inputRef.current.focus();
     setCheckedDrive(driveLetter);
   };
 
@@ -266,16 +251,46 @@ export default function Backup() {
       ...prev,
       destInputValue: backupOptions.destInputValue.slice(0, 3),
     }));
-    setCheckedDrive(null);
     inputRef.current.focus();
+  };
+
+  const handleNavBackAFolder = (e) => {
+    e.preventDefault();
+
+    // Get the current path
+    let currentPath = backupOptions.destInputValue;
+
+    // Remove trailing backslash if it exists
+    if (currentPath.endsWith("\\")) {
+      currentPath = currentPath.slice(0, -1);
+    }
+
+    // Check if current path is just the drive letter (e.g., "C:")
+    if (currentPath.length <= 2) {
+      // Drive letter plus backslash
+      return; // Don't navigate back if we're at the root level
+    }
+
+    // Split the path into parts and remove the last folder
+    const pathParts = currentPath.split("\\");
+
+    // Remove the last part (folder)
+    pathParts.pop();
+
+    // Join the remaining parts back together
+    const newPath = pathParts.join("\\");
+
+    // Update the state with the new path and add a backslash at the end
+    setBackupOptions((prev) => ({
+      ...prev,
+      destInputValue: newPath + (newPath ? "\\" : ""), // Add backslash if there's any part left
+    }));
   };
 
   return (
     <div className="h-screen flex flex-col bg--background">
       <Header />
-      <div className="flex justify-center items-center mt-40">
-        {" "}
-        {/* Subtract header height */}
+      <div className="flex justify-center items-center mt-24">
         <Card className="w-[420px] dark:border-purple-700 border-[0.5px]">
           <CardHeader>
             <CardTitle>Phone Backup</CardTitle>
@@ -284,6 +299,7 @@ export default function Backup() {
             <form>
               {!backupStarted ? (
                 <div className="grid grid-cols-2 select-none" id="options">
+                  {/* Source */}
                   <div className="flex flex-col gap-y-1.5">
                     <CardDescription className="select-none">
                       Source
@@ -332,6 +348,7 @@ export default function Backup() {
                     </div>
                   </div>
 
+                  {/* Destination */}
                   <div className="pb-20">
                     <CardDescription className="select-none">
                       Destination{" "}
@@ -369,7 +386,7 @@ export default function Backup() {
                     </div>
 
                     <div className="relative flex flex-col items-center space-x-2 select-none">
-                      <div className="absolute flex flex-col max-w-[180px] right-0 left-0">
+                      <div className="absolute flex flex-col max-w-[280px] right-0 left-0">
                         <div className="flex w-full justify-center items-center relative">
                           {/* Input Field */}
                           <Input
@@ -382,12 +399,26 @@ export default function Backup() {
                           />
 
                           {/* Trashcan Icon inside the Input */}
-                          <div
+                          <Button
+                            disabled={
+                              backupOptions.destInputValue.length === 3
+                                ? true
+                                : false
+                            }
+                            variant="ghost"
                             onClick={handleClearInput}
-                            className="hover:cursor-pointer absolute right-0 p-2 mt-[0.1rem] mr-[0.1rem] hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md" //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
+                            className="hover:cursor-pointer absolute right-0 p-2  hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md rounded-br-none rounded-l-none " //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
                           >
                             <Trash2Icon size={"17"} />
-                          </div>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            disabled={backupOptions.destInputValue.length === 3}
+                            onClick={handleNavBackAFolder}
+                            className="hover:cursor-pointer absolute -right-8 p-2 mt-[0.1rem] mr-[0.1rem] hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md" //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
+                          >
+                            <ArrowBigLeft size={"17"} />
+                          </Button>
                         </div>
 
                         <select
@@ -399,8 +430,9 @@ export default function Backup() {
                                 backupOptions.destInputValue + e.target.value;
                             } else {
                               backupOptions.destInputValue =
-                                backupOptions.destInputValue + f;
-                              "\\" + e.target.value;
+                                backupOptions.destInputValue +
+                                "\\" +
+                                e.target.value;
                             }
                           }}
                         >
@@ -420,6 +452,7 @@ export default function Backup() {
                   </div>
                 </div>
               ) : (
+                // Skeletons when backup are in progress
                 <div className="flex flex-col gap-4 mb-4">
                   <Skeleton className="w-[369px] h-[27px] rounded-full" />
                   <Skeleton className="w-[369px] h-[27px] rounded-full" />
@@ -427,6 +460,7 @@ export default function Backup() {
                 </div>
               )}
 
+              {/* Backup Card Footer */}
               <div
                 className={`${
                   deviceId ? "text-[#20C20E]" : "text-destructive"
