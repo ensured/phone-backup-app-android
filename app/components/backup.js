@@ -314,15 +314,15 @@ export default function Backup() {
                 <div className="grid grid-cols-2 select-none" id="options">
                   {/* Source */}
                   <div className="flex flex-col gap-y-1.5">
-                    <CardDescription className="select-none">
+                    <CardDescription className="select-none -mb-1.5">
                       Source
                     </CardDescription>
-                    <div className="flex items-center  dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]">
+                    <div className="flex items-center dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]">
                       <Checkbox
                         id="Camera"
                         checked={backupOptions.Camera}
                         onCheckedChange={() => handleCheckboxChange("Camera")}
-                        className="h-5 w-5 mr-2"
+                        className="h-6 w-6 mr-2"
                       />
                       <label
                         htmlFor="Camera"
@@ -336,7 +336,7 @@ export default function Backup() {
                         id="Downloads"
                         checked={backupOptions.Download}
                         onCheckedChange={() => handleCheckboxChange("Download")}
-                        className="h-5 w-5 mr-2"
+                        className="h-6 w-6 mr-2"
                       />
                       <label
                         htmlFor="Downloads"
@@ -350,7 +350,7 @@ export default function Backup() {
                         id="Pictures"
                         checked={backupOptions.Pictures}
                         onCheckedChange={() => handleCheckboxChange("Pictures")}
-                        className="h-5 w-5 mr-2"
+                        className="h-6 w-6 mr-2"
                       />
                       <label
                         htmlFor="Pictures"
@@ -440,6 +440,7 @@ export default function Backup() {
                         <select
                           onClick={handlePathsSelectClick}
                           ref={selectRef}
+                          disabled={loadingFolders}
                           className="bg-background w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
                           onChange={(e) => {
                             if (backupOptions.destInputValue.endsWith("\\")) {
