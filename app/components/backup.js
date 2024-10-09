@@ -440,7 +440,7 @@ export default function Backup() {
                         <select
                           onClick={handlePathsSelectClick}
                           ref={selectRef}
-                          className="w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
+                          className="bg-background w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
                           onChange={(e) => {
                             if (backupOptions.destInputValue.endsWith("\\")) {
                               backupOptions.destInputValue =
