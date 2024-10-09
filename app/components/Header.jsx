@@ -4,7 +4,6 @@ import Image from "next/image";
 import { DatabaseBackup, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ADLaM_Display } from "next/font/google";
-import { useState } from "react";
 import bg from "../../public/bg/bg1.jpg";
 const adlam = ADLaM_Display({
   subsets: ["latin"],
@@ -14,12 +13,11 @@ const adlam = ADLaM_Display({
 
 const Header = () => {
   const { theme, setTheme } = useTheme();
-  const [matrixMode, setToggleMatrixMode] = useState(false);
 
   return (
     <>
       <header
-        className={`h-50vh flex items-center justify-between p-4 text-foreground bg--background ${
+        className={` flex items-center justify-between p-4 text-foreground bg--background ${
           theme === "dark" ? "rainbow-shadow" : "shadow-md"
         }`}
       >
@@ -45,16 +43,6 @@ const Header = () => {
           )}
         </Button>
       </header>
-
-      {theme === "dark" ? (
-        <Image
-          src={bg}
-          alt="test"
-          className="absolute top-[68px] -z-10 object-cover h-[calc(100vh_-_68px)]"
-        />
-      ) : (
-        <div className="absolute h-full w-full bg-white -z-10"></div>
-      )}
     </>
   );
 };

@@ -6,7 +6,6 @@ import {
   getDeviceStatus,
   getFoldersInDirectory,
 } from "../../actions/_actions";
-import Script from "next/script";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import cache from "memory-cache";
@@ -302,20 +301,8 @@ export default function Backup() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg--background">
+    <div className="h-full w-full flex flex-col bg--background ">
       <Header />
-      <video
-        ref={videoRef}
-        className="dark:opacity-5 opacity-5 absolute -z-20 top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto transform -translate-x-1/2 -translate-y-1/2 object-cover"
-        autoPlay
-        loop
-        muted
-        playsInline
-      >
-        <source src="/bg/videos/bg.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
-
       <div className="flex justify-center items-center mt-24">
         <Card className="w-[420px] dark:border-purple-700 border-[0.5px]">
           <CardHeader>
@@ -514,6 +501,7 @@ export default function Backup() {
                         description:
                           "You haven't selected any folders to backup. Please enable at least one option.",
                         variant: "destructive",
+                        className: "overflow-hidden",
                       });
                       return;
                     }
