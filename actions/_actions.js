@@ -185,16 +185,8 @@ export async function startAdbServer() {
         .toString()
         .trim();
 
-      if (output === "unknown") {
-        return { output: "No devices or emulators found" };
-      }
-
       return { output };
     } catch (error) {
-      // Handle specific adb error if no devices/emulators are found
-      if (error.message.includes("no devices/emulators found")) {
-        return { output: "No devices or emulators found" };
-      }
       return { output: error.message };
     }
   } catch (error) {

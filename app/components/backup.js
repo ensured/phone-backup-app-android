@@ -39,7 +39,6 @@ export default function Backup() {
   const [drives, setDrives] = useState([]);
   const [checkedDrive, setCheckedDrive] = useState(null);
   const [selectPathsAvailable, setSelectPathsAvailable] = useState([]);
-  const [loadingFolders, setLoadingFolders] = useState(false);
   const [backupOptions, setBackupOptions] = useState({
     Camera: true,
     Download: true,
@@ -73,7 +72,6 @@ export default function Backup() {
 
   const handlePathsSelectClick = async (e) => {
     e.preventDefault();
-    setLoadingFolders(true);
 
     const cacheKey = `folders_${backupOptions.destInputValue}`; // Create a unique cache key based on the input value
     const cachedResult = cache.get(cacheKey); // Try to get the result from the cache
@@ -81,7 +79,6 @@ export default function Backup() {
     if (cachedResult) {
       setSelectPathsAvailable(cachedResult);
       selectRef.current.focus(); // Focus the select element
-      setLoadingFolders(false);
       return;
     }
     const { status, directories } = await getFoldersInDirectory(
@@ -109,13 +106,12 @@ export default function Backup() {
           </div>
         ),
       });
-      setLoadingFolders(false);
+
       return;
     }
 
     cache.put(cacheKey, directories, 60000);
     setSelectPathsAvailable(directories);
-    setLoadingFolders(false);
     selectRef.current.focus(); // Focus the select element
   };
 
@@ -424,9 +420,7 @@ export default function Backup() {
                           >
                             <Trash2Icon size={"17"} />
                           </Button>
-                          {loadingFolders && (
-                            <Loader2 className="absolute right-[0.175rem] flex size-7 rounded-full dark:bg-zinc-950 animate-spin justify-center items-center" />
-                          )}
+
                           <Button
                             variant="ghost"
                             disabled={backupOptions.destInputValue.length === 3}
@@ -440,7 +434,6 @@ export default function Backup() {
                         <select
                           onClick={handlePathsSelectClick}
                           ref={selectRef}
-                          disabled={loadingFolders}
                           className="bg-background w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
                           onChange={(e) => {
                             if (backupOptions.destInputValue.endsWith("\\")) {
@@ -454,9 +447,7 @@ export default function Backup() {
                             }
                           }}
                         >
-                          <option value="">
-                            {loadingFolders ? "loading" : "Select a folder"}
-                          </option>
+                          <option value="">Select a folder</option>
                           {selectPathsAvailable.map((path) => (
                             <option
                               key={path}
