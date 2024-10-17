@@ -38,6 +38,7 @@ export default function Backup() {
   const [drives, setDrives] = useState([]);
   const [checkedDrive, setCheckedDrive] = useState(null);
   const [selectPathsAvailable, setSelectPathsAvailable] = useState([]);
+  const [loadingPaths, setLoadingPaths] = useState(false);
   const [backupOptions, setBackupOptions] = useState({
     Camera: true,
     Download: true,
@@ -63,46 +64,7 @@ export default function Backup() {
     });
   }
 
-  const handlePathsSelectClick = async (e) => {
-    e.preventDefault();
-
-    const { status, directories } = await getFoldersInDirectory(
-      backupOptions.destInputValue
-    );
-
-    if (status === "error") {
-      toast({
-        status: "error",
-        description: (
-          <div className="flex flex-col">
-            <div>
-              <span className="text-red-600 font-bold text-lg">
-                Folder Not Found!
-              </span>
-              <Button
-                className="ml-2"
-                onClick={handleClearInput}
-                variant={"destructive"}
-                size={"lg"}
-              >
-                Clear input
-              </Button>
-            </div>
-          </div>
-        ),
-      });
-
-      return;
-    }
-
-    setSelectPathsAvailable(directories);
-    selectRef.current.focus(); // Focus the select element
-  };
-
   useEffect(() => {
-    setCheckedDrive("C:");
-    backupOptions.destInputValue = "C:\\";
-
     // Load localStorage checkbox options and destination path
     const storedOptions = JSON.parse(localStorage.getItem("backupOptions"));
     if (storedOptions) {
@@ -112,7 +74,31 @@ export default function Backup() {
     const fetchDrives = async () => {
       const drives = await getDrives();
       setDrives(drives);
+
+      // Only set default drive if no destination is set in backupOptions
+      if (!storedOptions?.destInputValue) {
+        const defaultDrive = drives[0] + "\\"; // Default drive path
+        setCheckedDrive(drives[0]); // Set the first available drive as default
+
+        const newBackupOptions = {
+          ...backupOptions,
+          destInputValue: defaultDrive, // Set default drive here
+        };
+
+        setBackupOptions((prev) => ({
+          ...prev,
+          ...newBackupOptions,
+        }));
+
+        // Save to localStorage to persist the default drive
+        localStorage.setItem("backupOptions", JSON.stringify(newBackupOptions));
+      } else {
+        // Use the saved destination drive if available
+        const driveLetter = storedOptions.destInputValue.slice(0, 2); // Assuming drive letter is 'C:'
+        setCheckedDrive(driveLetter); // Set the checked drive based on saved destination
+      }
     };
+
     fetchDrives();
 
     const fetchDeviceStatus = async () => {
@@ -283,16 +269,60 @@ export default function Backup() {
     }));
   };
 
+  const handlePathsSelectClick = async (e) => {
+    e.preventDefault();
+    setLoadingPaths(true);
+
+    const { status, directories } = await getFoldersInDirectory(
+      backupOptions.destInputValue
+    );
+
+    if (status === "error") {
+      toast({
+        status: "error",
+        description: (
+          <div className="flex flex-col">
+            <div>
+              <span className="text-red-600 font-bold text-lg">
+                Folder Not Found!
+              </span>
+              <Button
+                className="ml-2"
+                onClick={handleClearInput}
+                variant={"destructive"}
+                size={"lg"}
+              >
+                Clear input
+              </Button>
+            </div>
+          </div>
+        ),
+      });
+      setLoadingPaths(false);
+      return;
+    }
+
+    setSelectPathsAvailable(directories);
+    selectRef.current.focus(); // Focus the select element
+    localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
+    setLoadingPaths(false);
+  };
+
   return (
     <div className="h-full w-full flex flex-col bg--background ">
       <Header />
       <div className="flex justify-center items-center mt-24">
-        <Card className="w-[420px] dark:border-purple-700 border-[0.5px]">
+        <Card className="w-[420px] dark:border-purple-700 border-[0.5px] relative">
           <CardHeader>
             <CardTitle>Phone Backup</CardTitle>
           </CardHeader>
           <CardContent>
-            <form>
+            <form className="">
+              {loadingPaths ? (
+                <div className="absolute inset-0 z-50 rounded-xl bg-slate-950/30 flex justify-center items-center">
+                  <Loader2 className="size-10 animate-spin" />
+                </div>
+              ) : null}
               {!backupStarted ? (
                 <div className="grid grid-cols-2 select-none" id="options">
                   {/* Source */}

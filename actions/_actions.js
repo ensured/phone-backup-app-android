@@ -128,12 +128,30 @@ export async function backup(backupOptions, destinationPath) {
 
 export async function getFoldersInDirectory(directory) {
   try {
-    // Wrap the directory in double quotes to handle spaces
-    const output = execSync(`dir /ad /b "${directory}"`);
-    const directories = output
-      .toString()
-      .split("\r\n")
-      .filter((line) => line); // Filter out empty lines
+    const blacklistedFolders = new Set([
+      "system volume information",
+      "$recycle.bin",
+      "$sysreset",
+      "perflogs",
+      "recovery",
+    ]);
+
+    const isBlacklisted = (folder) =>
+      blacklistedFolders.has(folder.toLowerCase());
+
+    // Extract the folder name from the directory path
+    const folderName = directory.split("\\").pop();
+    if (isBlacklisted(folderName)) {
+      return {
+        status: "error",
+        message: `Directory ${directory} is blacklisted`,
+      };
+    }
+
+    const directories = fs
+      .readdirSync(directory, { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory() && !isBlacklisted(dirent.name))
+      .map((dirent) => dirent.name);
 
     return { status: "success", directories };
   } catch (error) {
