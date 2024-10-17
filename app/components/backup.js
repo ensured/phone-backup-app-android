@@ -8,7 +8,6 @@ import {
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import cache from "memory-cache";
 import {
   CheckIcon,
   Loader2,
@@ -48,12 +47,6 @@ export default function Backup() {
 
   const selectRef = useRef(null); // Create a ref for the select element
   const inputRef = useRef(null);
-  const videoRef = useRef(null);
-
-  // Set the playback rate directly when rendering
-  if (videoRef.current) {
-    videoRef.current.playbackRate = 0.75; // Set the video to 75% speed
-  }
 
   const { toast, dismissAll } = useToast();
 
@@ -73,14 +66,6 @@ export default function Backup() {
   const handlePathsSelectClick = async (e) => {
     e.preventDefault();
 
-    const cacheKey = `folders_${backupOptions.destInputValue}`; // Create a unique cache key based on the input value
-    const cachedResult = cache.get(cacheKey); // Try to get the result from the cache
-
-    if (cachedResult) {
-      setSelectPathsAvailable(cachedResult);
-      selectRef.current.focus(); // Focus the select element
-      return;
-    }
     const { status, directories } = await getFoldersInDirectory(
       backupOptions.destInputValue
     );
@@ -110,12 +95,14 @@ export default function Backup() {
       return;
     }
 
-    cache.put(cacheKey, directories, 60000);
     setSelectPathsAvailable(directories);
     selectRef.current.focus(); // Focus the select element
   };
 
   useEffect(() => {
+    setCheckedDrive("C:");
+    backupOptions.destInputValue = "C:\\";
+
     // Load localStorage checkbox options and destination path
     const storedOptions = JSON.parse(localStorage.getItem("backupOptions"));
     if (storedOptions) {
@@ -403,6 +390,7 @@ export default function Backup() {
                             autoComplete="true"
                             onChange={handleDestInputChange}
                             type="text"
+                            disabled={!checkedDrive}
                             value={backupOptions.destInputValue}
                             className="dark:border-[#895dd4f5] border rounded-b-none border-b-0 pr-8 focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] focus-visible:border-b"
                           />
@@ -432,6 +420,9 @@ export default function Backup() {
                         </div>
 
                         <select
+                          disabled={
+                            !checkedDrive || !backupOptions.destInputValue
+                          }
                           onClick={handlePathsSelectClick}
                           ref={selectRef}
                           className="bg-background w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
