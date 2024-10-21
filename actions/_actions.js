@@ -191,7 +191,6 @@ export async function getDeviceStatus() {
     return null;
   }
 }
-
 export async function startAdbServer() {
   try {
     // Start the adb server and suppress the output

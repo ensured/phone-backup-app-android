@@ -3,13 +3,10 @@ import { startAdbServer } from "@/actions/_actions";
 
 const Backup = dynamic(() => import("./components/backup"), { ssr: false });
 
-const Page = () => {
-  startAdbServer();
-  return (
-    <>
-      <Backup />
-    </>
-  );
+const Page = async () => {
+  const { output } = await startAdbServer();
+
+  return <Backup />;
 };
 
 export default Page;
