@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import io from "socket.io-client";
 import Header from "./Header";
 import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { DeviceNotConnected } from "@/components/device-not-connected";
 
 let socket;
 
@@ -309,26 +310,17 @@ export default function Backup() {
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg--background gap-4">
+    <div className="min-h-screen w-full flex flex-col bg--background gap-4">
       <Header />
-      <div className="flex justify-center items-center mt-20">
-        <Card className="w-[420px] dark:border-purple-700 border-[0.5px] relative">
-          <CardHeader>
-            <CardTitle>Phone Backup</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!deviceId && isVisible ? (
-              <Alert variant="warning" className="max-w-md mx-auto">
-                <UsbIcon className="h-4 w-4" />
-                <AlertTitle className="flex items-center justify-between">
-                  Device Not Connected
-                </AlertTitle>
-                <AlertDescription>
-                  Please make sure your device is connected to your computer via
-                  USB and enable USB debugging.
-                </AlertDescription>
-              </Alert>
-            ) : (
+      {!deviceId && isVisible ? (
+        <DeviceNotConnected />
+      ) : (
+        <div className="flex justify-center items-center mt-20">
+          <Card className="w-[420px] dark:border-purple-700 border-[0.5px] relative">
+            <CardHeader>
+              <CardTitle>Phone Backup</CardTitle>
+            </CardHeader>
+            <CardContent>
               <form className="">
                 {loadingPaths ? (
                   <div className="absolute inset-0 z-50 rounded-xl bg-slate-950/30 flex justify-center items-center">
@@ -573,10 +565,10 @@ export default function Backup() {
                   />
                 )}
               </form>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
