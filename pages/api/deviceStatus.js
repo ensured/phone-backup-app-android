@@ -19,7 +19,7 @@ export default async function SocketHandler(req, res) {
 
     tracker.on("add", (device) => {
       connectedDevices.push(device); // Add connected device to the list
-      console.log("Device connected: " + device.id);
+      console.log("New device connected: " + device.id);
       io.emit("device-status", { status: "connected", deviceId: device.id });
     });
 
@@ -36,7 +36,7 @@ export default async function SocketHandler(req, res) {
   }
 
   io.on("connection", (socket) => {
-    console.log("Client connected");
+    console.log("socket client connected");
     // Send current connected devices to the client on connection
     if (connectedDevices.length > 0) {
       socket.emit("device-status", {
@@ -48,7 +48,7 @@ export default async function SocketHandler(req, res) {
     }
 
     socket.on("disconnect", () => {
-      console.log("Client disconnected");
+      console.log("socket client disconnected");
     });
   });
 
