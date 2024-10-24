@@ -3,6 +3,7 @@ import "./globals.css";
 import localFont from "next/font/local";
 
 import { ThemeProvider } from "./components/theme-provider";
+import HeaderClient from "./components/HeaderClient";
 
 const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
@@ -25,7 +26,11 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="min-h-screen min-w-full flex flex-col bg--background gap-4 overflow-hidden">
+            <HeaderClient />
+
+            {children}
+          </div>
         </ThemeProvider>
         <Toaster />
       </body>

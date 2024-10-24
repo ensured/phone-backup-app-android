@@ -1,12 +1,14 @@
-import dynamic from "next/dynamic";
 import { startAdbServer } from "@/actions/_actions";
-
-const Backup = dynamic(() => import("./components/backup"), { ssr: false });
+import BackupClient from "./components/BackupClient";
 
 const Page = async () => {
-  const { output } = await startAdbServer();
+  const { success, output, error } = await startAdbServer();
 
-  return <Backup />;
+  // Log success or error output for debugging purposes
+  console.log("ADB Server Start:", success, output || error);
+
+  // Only render Backup component if ADB server is successfully started
+  return <BackupClient />;
 };
 
 export default Page;

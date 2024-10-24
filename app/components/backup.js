@@ -8,9 +8,7 @@ import {
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckIcon, Loader2, Trash2Icon, ArrowBigLeft } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { UsbIcon, XIcon } from "lucide-react";
+import { Loader2, Trash2Icon, ArrowBigLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Card,
@@ -20,16 +18,16 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import Confetti from "react-confetti-boom";
 import { Input } from "@/components/ui/input";
 import io from "socket.io-client";
-import Header from "./Header";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { DeviceNotConnected } from "@/components/device-not-connected";
+import BackupOption from "./backupOption";
+import Confetti from "./Confetti";
+import CardFooterBackupAndStatus from "./CardFooterBackupAndStatus";
 
 let socket;
 
-export default function Backup() {
+export default function Backup({ isDeviceConnected }) {
   const [deviceId, setDeviceId] = useState(null);
   const [backupStarted, setBackupStarted] = useState(false);
   const [backupEnded, setBackupEnded] = useState(false);
@@ -130,11 +128,8 @@ export default function Backup() {
     }
   }, [backupOptions]); // Listen to destInputValue only
 
-  const handleCheckboxChange = (option) => {
-    setBackupOptions((prev) => ({
-      ...prev,
-      [option]: !prev[option],
-    }));
+  const handleBackupOptionsChange = (updatedOptions) => {
+    setBackupOptions(updatedOptions);
   };
 
   const startBackup = async () => {
@@ -310,264 +305,158 @@ export default function Backup() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg--background gap-4">
-      <Header />
+    <div className="flex justify-center items-center mt-20">
       {!deviceId && isVisible ? (
         <DeviceNotConnected />
       ) : (
-        <div className="flex justify-center items-center mt-20">
-          <Card className="w-[420px] dark:border-purple-700 border-[0.5px] relative">
-            <CardHeader>
-              <CardTitle>Phone Backup</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form className="">
-                {loadingPaths ? (
-                  <div className="absolute inset-0 z-50 rounded-xl bg-slate-950/30 flex justify-center items-center">
-                    <Loader2 className="size-10 animate-spin" />
-                  </div>
-                ) : null}
-                {!backupStarted ? (
-                  <div className="grid grid-cols-2 select-none" id="options">
-                    {/* Source */}
-                    <div className="flex flex-col gap-y-1.5">
-                      <CardDescription className="select-none -mb-1.5">
-                        Source
-                      </CardDescription>
-                      <div className="flex items-center dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]">
-                        <Checkbox
-                          id="Camera"
-                          checked={backupOptions.Camera}
-                          onCheckedChange={() => handleCheckboxChange("Camera")}
-                          className="h-6 w-6 mr-2"
-                        />
-                        <label
-                          htmlFor="Camera"
-                          className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          /DCIM/Camera
-                        </label>
-                      </div>
-                      <div className="flex items-center dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]">
-                        <Checkbox
-                          id="Downloads"
-                          checked={backupOptions.Download}
-                          onCheckedChange={() =>
-                            handleCheckboxChange("Download")
-                          }
-                          className="h-6 w-6 mr-2"
-                        />
-                        <label
-                          htmlFor="Downloads"
-                          className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          /Download
-                        </label>
-                      </div>
-                      <div className="flex items-center dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]">
-                        <Checkbox
-                          id="Pictures"
-                          checked={backupOptions.Pictures}
-                          onCheckedChange={() =>
-                            handleCheckboxChange("Pictures")
-                          }
-                          className="h-6 w-6 mr-2"
-                        />
-                        <label
-                          htmlFor="Pictures"
-                          className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          /Pictures
-                        </label>
-                      </div>
-                    </div>
+        <Card className="w-[26.25rem]  dark:border-purple-700 border-[0.5px] relative">
+          <CardHeader>
+            <CardTitle>Phone Backup</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="">
+              {loadingPaths ? (
+                <div className="absolute inset-0 z-50 rounded-xl bg-slate-950/30 flex justify-center items-center">
+                  <Loader2 className="size-10 animate-spin" />
+                </div>
+              ) : null}
+              {!backupStarted ? (
+                <div className="grid grid-cols-2 select-none" id="options">
+                  <BackupOption
+                    options={backupOptions}
+                    onChange={handleBackupOptionsChange}
+                  />
 
-                    {/* Destination */}
-                    <div className="pb-20">
-                      <CardDescription className="select-none">
-                        Destination{" "}
-                      </CardDescription>
-                      <div className="grid grid-cols-3 gap-4 items-center select-none">
-                        {drives.length > 0 ? (
-                          drives.map((driveLetter) => (
-                            <div
-                              key={driveLetter}
-                              className="flex items-center space-x-2"
-                            >
-                              <div className="relative flex items-center justify-center">
-                                <Checkbox
-                                  id={driveLetter}
-                                  checked={checkedDrive === driveLetter}
-                                  onCheckedChange={() =>
-                                    handleDriveCheckboxChange(driveLetter)
-                                  }
-                                  className="appearance-none w-6 h-6 border border-gray-300 rounded-sm focus:mb-[0.29rem] mb-[0.29rem]"
-                                />
-                              </div>
-                              <label
-                                htmlFor={driveLetter}
-                                className="cursor-pointer text-sm"
-                              >
-                                {driveLetter}
-                              </label>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="flex items-center space-x-2.5 w-full">
-                            <Loader2 className="m-[0.316rem] size-5 animate-spin justify-center w-full" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="relative flex flex-col items-center space-x-2 select-none">
-                        <div className="absolute flex flex-col max-w-[280px] right-0 left-0">
-                          <div className="flex w-full justify-center items-center relative">
-                            {/* Input Field */}
-                            <Input
-                              ref={inputRef}
-                              autoComplete="true"
-                              onChange={handleDestInputChange}
-                              type="text"
-                              disabled={!checkedDrive}
-                              value={backupOptions.destInputValue}
-                              className="dark:border-[#895dd4f5] border rounded-b-none border-b-0 pr-8 focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] focus-visible:border-b"
-                            />
-
-                            {/* Trashcan Icon inside the Input */}
-                            <Button
-                              disabled={
-                                backupOptions.destInputValue.length === 3
-                                  ? true
-                                  : false
-                              }
-                              variant="ghost"
-                              onClick={handleClearInput}
-                              className="hover:cursor-pointer absolute right-0 p-2  hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md rounded-br-none rounded-l-none " //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
-                            >
-                              <Trash2Icon size={"17"} />
-                            </Button>
-
-                            <Button
-                              variant="ghost"
-                              disabled={
-                                backupOptions.destInputValue.length === 3
-                              }
-                              onClick={handleNavBackAFolder}
-                              className="hover:cursor-pointer absolute -right-8 p-2 mt-[0.1rem] mr-[0.1rem] hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md" //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
-                            >
-                              <ArrowBigLeft size={"17"} />
-                            </Button>
-                          </div>
-
-                          <select
-                            disabled={
-                              !checkedDrive || !backupOptions.destInputValue
-                            }
-                            onClick={handlePathsSelectClick}
-                            ref={selectRef}
-                            className="bg-background w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
-                            onChange={(e) => {
-                              if (backupOptions.destInputValue.endsWith("\\")) {
-                                backupOptions.destInputValue =
-                                  backupOptions.destInputValue + e.target.value;
-                              } else {
-                                backupOptions.destInputValue =
-                                  backupOptions.destInputValue +
-                                  "\\" +
-                                  e.target.value;
-                              }
-                            }}
+                  {/* Destination */}
+                  <div className="pb-20">
+                    <CardDescription className="select-none">
+                      Destination{" "}
+                    </CardDescription>
+                    <div className="grid grid-cols-3 gap-4 items-center select-none">
+                      {drives.length > 0 ? (
+                        drives.map((driveLetter) => (
+                          <div
+                            key={driveLetter}
+                            className="flex items-center space-x-2"
                           >
-                            <option value="">Select a folder</option>
-                            {selectPathsAvailable.map((path) => (
-                              <option
-                                key={path}
-                                value={path}
-                                className="text-lg w-full text-primary"
-                              >
-                                {path}
-                              </option>
-                            ))}
-                          </select>
+                            <div className="relative flex items-center justify-center">
+                              <Checkbox
+                                id={driveLetter}
+                                checked={checkedDrive === driveLetter}
+                                onCheckedChange={() =>
+                                  handleDriveCheckboxChange(driveLetter)
+                                }
+                                className="appearance-none w-6 h-6 border border-gray-300 rounded-sm focus:mb-[0.29rem] mb-[0.29rem]"
+                              />
+                            </div>
+                            <label
+                              htmlFor={driveLetter}
+                              className="cursor-pointer text-sm"
+                            >
+                              {driveLetter}
+                            </label>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-center space-x-2.5 w-full">
+                          <Loader2 className="m-[0.316rem] size-5 animate-spin justify-center w-full" />
                         </div>
+                      )}
+                    </div>
+
+                    <div className="relative flex flex-col items-center space-x-2 select-none">
+                      <div className="absolute flex flex-col max-w-[280px] right-0 left-0">
+                        <div className="flex w-full justify-center items-center relative">
+                          {/* Input Field */}
+                          <Input
+                            ref={inputRef}
+                            autoComplete="true"
+                            onChange={handleDestInputChange}
+                            type="text"
+                            disabled={!checkedDrive}
+                            value={backupOptions.destInputValue}
+                            className="dark:border-[#895dd4f5] border rounded-b-none border-b-0 pr-8 focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] focus-visible:border-b"
+                          />
+
+                          {/* Trashcan Icon inside the Input */}
+                          <Button
+                            disabled={
+                              backupOptions.destInputValue.length === 3
+                                ? true
+                                : false
+                            }
+                            variant="ghost"
+                            onClick={handleClearInput}
+                            className="hover:cursor-pointer absolute right-0 p-2  hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md rounded-br-none rounded-l-none " //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
+                          >
+                            <Trash2Icon size={"17"} />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            disabled={backupOptions.destInputValue.length === 3}
+                            onClick={handleNavBackAFolder}
+                            className="hover:cursor-pointer absolute -right-8 p-2 mt-[0.1rem] mr-[0.1rem] hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md" //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
+                          >
+                            <ArrowBigLeft size={"17"} />
+                          </Button>
+                        </div>
+
+                        <select
+                          disabled={
+                            !checkedDrive || !backupOptions.destInputValue
+                          }
+                          onClick={handlePathsSelectClick}
+                          ref={selectRef}
+                          className="bg-background w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
+                          onChange={(e) => {
+                            if (backupOptions.destInputValue.endsWith("\\")) {
+                              backupOptions.destInputValue =
+                                backupOptions.destInputValue + e.target.value;
+                            } else {
+                              backupOptions.destInputValue =
+                                backupOptions.destInputValue +
+                                "\\" +
+                                e.target.value;
+                            }
+                          }}
+                        >
+                          <option value="">Select a folder</option>
+                          {selectPathsAvailable.map((path) => (
+                            <option
+                              key={path}
+                              value={path}
+                              className="text-lg w-full text-primary"
+                            >
+                              {path}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  // Skeletons when backup are in progress
-                  <div className="flex flex-col gap-4 mb-4">
-                    <Skeleton className="w-[369px] h-[27px] rounded-full" />
-                    <Skeleton className="w-[369px] h-[27px] rounded-full" />
-                    <Skeleton className="w-[369px] h-[27px] rounded-full" />
-                  </div>
-                )}
-
-                {/* Backup Card Footer */}
-                <div
-                  className={`${
-                    deviceId ? "text-[#20C20E]" : "text-destructive"
-                  } font-semibold flex items-center border rounded-md`}
-                >
-                  <Button
-                    disabled={
-                      backupStarted ||
-                      !deviceId ||
-                      !backupOptions.destInputValue
-                    }
-                    onClick={(e) => {
-                      const anyOptionSelected = Object.values(backupOptions)
-                        .filter((option) => option !== "destInputValue")
-                        .some((option) => option === true);
-
-                      if (!anyOptionSelected) {
-                        e.preventDefault();
-                        toast({
-                          title: "Please Select a backup source",
-                          description:
-                            "You haven't selected any folders to backup. Please enable at least one option.",
-                          variant: "destructive",
-                          className: "overflow-hidden",
-                        });
-                        return;
-                      }
-                      startBackup();
-                    }}
-                    className="relative rounded-e-none text-md px-7 w-36 select-none"
-                  >
-                    {backupStarted ? "Backing up..." : "Backup"}
-                  </Button>
-                  <div className="ml-3 flex justify-center select-none">
-                    {deviceId ? (
-                      <div className="text-md flex gap-1 items-center">
-                        {deviceId} connected <CheckIcon />
-                      </div>
-                    ) : (
-                      <div className="text-md flex gap-1 items-center">
-                        No device plugged in <XIcon />
-                      </div>
-                    )}
                   </div>
                 </div>
-                {backupEnded && (
-                  <Confetti
-                    mode="boom"
-                    width="50%"
-                    height="50%"
-                    particleCount={69}
-                    colors={[
-                      "#ff577f",
-                      "#ff884b",
-                      "#ff3967",
-                      "#ff884b",
-                      "#ffd384",
-                      "#fff9b0",
-                    ]}
-                  />
-                )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+              ) : (
+                // Skeletons when backup are in progress
+                <div className="flex flex-col gap-4 mb-4">
+                  <Skeleton className="w-[369px] h-[27px] rounded-full" />
+                  <Skeleton className="w-[369px] h-[27px] rounded-full" />
+                  <Skeleton className="w-[369px] h-[27px] rounded-full" />
+                </div>
+              )}
+
+              {/* Backup Card Footer */}
+              <CardFooterBackupAndStatus
+                deviceId={deviceId}
+                backupOptions={backupOptions}
+                backupStarted={backupStarted}
+                startBackup={startBackup}
+              />
+
+              {backupEnded && <Confetti />}
+            </form>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
