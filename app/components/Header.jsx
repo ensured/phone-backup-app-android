@@ -5,6 +5,7 @@ import { DatabaseBackup, Loader2, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { ADLaM_Display } from "next/font/google";
+import Link from "next/link";
 
 const adlam = ADLaM_Display({
   subsets: ["latin"],
@@ -25,18 +26,11 @@ const Header = () => {
     // Show a loading state or a non-themed static header while mounting
     return (
       <header className="flex items-center justify-between p-4 text-foreground bg--background shadow-md shadow-border">
-        <h1
-          className={cn(
-            adlam.className,
-            "text-2xl flex flex-row items-center select-none"
-          )}
-        >
-          <DatabaseBackup className="mr-3 size-6 text-purple-700/90 dark:text-purple-700/80" />{" "}
-          Backup Buddy
-        </h1>
-        <Button variant="outline" size="icon">
-          <Loader2 className="h-[1.2rem] w-[1.2rem] animate-spin" />
-        </Button>
+        <Link href="/">
+          <Button variant="outline" size="icon">
+            <Loader2 className="h-[1.2rem] w-[1.2rem] animate-spin" />
+          </Button>
+        </Link>
       </header>
     );
   }
@@ -45,15 +39,19 @@ const Header = () => {
     <header
       className={`flex items-center justify-between p-4 text-foreground bg--background shadow-md shadow-border`}
     >
-      <h1
-        className={cn(
-          adlam.className,
-          "text-2xl flex flex-row items-center select-none"
-        )}
+      <Link
+        href="/"
+        className="hover:text-purple-700 dark:hover:text-purple-700 transition-colors duration-200"
       >
-        <DatabaseBackup className="mr-3 size-6 text-purple-700/90 dark:text-purple-700/80" />{" "}
-        Backup Buddy
-      </h1>
+        <h1
+          className={cn(
+            adlam.className,
+            "text-2xl flex flex-row items-center select-none "
+          )}
+        >
+          <DatabaseBackup className="mr-3 size-6 " /> Backup Buddy
+        </h1>
+      </Link>
       <Button
         variant="outline"
         size="icon"
