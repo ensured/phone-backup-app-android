@@ -1,6 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
-import localFont from "next/font/local";
 
 import { ThemeProvider } from "./components/theme-provider";
 import HeaderClient from "./components/HeaderClient";
