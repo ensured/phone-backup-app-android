@@ -58,6 +58,9 @@ module.exports = {
           5: "hsl(var(--chart-5))",
         },
       },
+      transitionDuration: {
+        5000: "5000ms",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

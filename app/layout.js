@@ -28,7 +28,6 @@ export default function RootLayout({ children }) {
         >
           <div className="min-h-screen min-w-full flex flex-col bg--background gap-4 overflow-hidden">
             <HeaderClient />
-
             {children}
           </div>
         </ThemeProvider>
