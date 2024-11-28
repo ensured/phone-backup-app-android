@@ -191,51 +191,46 @@ export async function getDeviceStatus() {
     return null;
   }
 }
+
+async function getDevice() {
+  const client = Adb.createClient();
+  const devices = await client.listDevices();
+  return devices[0]?.id;
+}
+
 export async function startAdbServer() {
   try {
     // Start the adb server and suppress the output
     execSync("adb -P 5037 start-server", { stdio: "ignore" });
 
-    // Poll for the adb state, waiting for the server to be ready
-    const maxRetries = 4; // Set max retries to avoid infinite loop
-    const delay = 1000; // Delay between retries in milliseconds
+    // Removed retry logic
+    try {
+      // Log attempt to check the adb state
+      console.log(`Checking adb state`);
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        // Log each attempt to check the adb state
-        console.log(`Checking adb state, attempt: ${attempt}`);
+      const output = execSync("adb get-state", { stdio: "pipe" })
+        .toString()
+        .trim();
 
-        const output = execSync("adb get-state", { stdio: "pipe" })
-          .toString()
-          .trim();
-
-        console.log("ADB get-state output:", output); // Log the adb get-state output
-
-        if (output === "device") {
-          // If the device state is 'device', it's online and ready
-          return { success: true, output };
-        } else if (output === "offline") {
-          // If the device is offline, keep retrying
-          console.log("Device is offline, retrying...");
-        } else {
-          // Handle other adb states (if needed)
-          console.log("Unexpected adb state:", output);
-        }
-      } catch (error) {
-        if (error.message.includes("device offline")) {
-          console.log("Device offline, waiting...");
-        } else if (attempt === maxRetries) {
-          // If max retries reached, return failure
-          return {
-            success: false,
-            error: "ADB server failed to start or device remained offline.",
-          };
-        } else {
-          console.log(`Attempt ${attempt} failed: ${error.message}`);
-        }
+      if (output === "device") {
+        // If the device state is 'device', it's online and ready
+        const deviceID = await getDevice();
+        return { success: true, output, deviceID };
+      } else {
+        // Handle other adb states (if needed)
+        console.log("Device is offline or unexpected state:", output);
+        return {
+          success: false,
+          error:
+            "ADB server started but device is offline or in an unexpected state.",
+        };
       }
-      // Wait for a while before retrying
-      await new Promise((resolve) => setTimeout(resolve, delay));
+    } catch (error) {
+      console.log(`Error checking adb state: ${error.message}`);
+      return {
+        success: false,
+        error: "Failed to check ADB state.",
+      };
     }
   } catch (error) {
     // Handle errors from starting the adb server

@@ -27,8 +27,8 @@ import CardFooterBackupAndStatus from "./CardFooterBackupAndStatus";
 
 let socket;
 
-export default function Backup({ isDeviceConnected }) {
-  const [deviceId, setDeviceId] = useState(null);
+export default function Backup({ success, deviceID }) {
+  const [deviceId, setDeviceId] = useState(success ? deviceID : null);
   const [backupStarted, setBackupStarted] = useState(false);
   const [backupEnded, setBackupEnded] = useState(false);
   const [drives, setDrives] = useState([]);
@@ -41,8 +41,6 @@ export default function Backup({ isDeviceConnected }) {
     Pictures: true,
     destInputValue: "",
   });
-
-  const [isVisible, setIsVisible] = useState(!deviceId ? true : false);
 
   const selectRef = useRef(null); // Create a ref for the select element
   const inputRef = useRef(null);
@@ -58,7 +56,6 @@ export default function Backup({ isDeviceConnected }) {
         setDeviceId(data.deviceId); // Set the connected deviceId
       } else if (data.status === "disconnected") {
         setDeviceId(""); // Clear the deviceId when disconnected
-        setIsVisible(true);
       }
     });
   }
@@ -306,7 +303,7 @@ export default function Backup({ isDeviceConnected }) {
 
   return (
     <div className="flex justify-center items-center mt-20">
-      {!deviceId && isVisible ? (
+      {!deviceId ? (
         <DeviceNotConnected />
       ) : (
         <Card className="w-[26.25rem]  dark:border-purple-700 border-[0.5px] relative">
