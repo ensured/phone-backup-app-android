@@ -8,7 +8,9 @@ const BackupOption = ({ options, onChange }) => {
 
   return (
     <div className="flex flex-col gap-y-1.5">
-      <CardDescription className="select-none -mb-1.5">Source</CardDescription>
+      <CardDescription className="select-none -mb-1.5 py-2 flex items-center text-md">
+        Source
+      </CardDescription>
       {Object.keys(options)
         .filter((option) => option !== "destInputValue")
         .map(

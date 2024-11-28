@@ -206,7 +206,6 @@ export async function startAdbServer() {
     // Removed retry logic
     try {
       // Log attempt to check the adb state
-      console.log(`Checking adb state`);
 
       const output = execSync("adb get-state", { stdio: "pipe" })
         .toString()

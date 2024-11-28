@@ -8,7 +8,7 @@ import {
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Trash2Icon, ArrowBigLeft } from "lucide-react";
+import { Loader2, Trash2Icon, ArrowBigLeft, RefreshCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Card,
@@ -46,6 +46,13 @@ export default function Backup({ success, deviceID }) {
   const inputRef = useRef(null);
 
   const { toast, dismissAll } = useToast();
+
+  const handleRefreshDrives = async () => {
+    setLoadingPaths(true);
+    const drives = await getDrives();
+    setDrives(drives);
+    setLoadingPaths(false);
+  };
 
   async function socketInitializer() {
     await fetch("/api/deviceStatus");
@@ -312,11 +319,6 @@ export default function Backup({ success, deviceID }) {
           </CardHeader>
           <CardContent>
             <form className="">
-              {loadingPaths ? (
-                <div className="absolute inset-0 z-50 rounded-xl bg-slate-950/30 flex justify-center items-center">
-                  <Loader2 className="size-10 animate-spin" />
-                </div>
-              ) : null}
               {!backupStarted ? (
                 <div className="grid grid-cols-2 select-none" id="options">
                   <BackupOption
@@ -326,11 +328,24 @@ export default function Backup({ success, deviceID }) {
 
                   {/* Destination */}
                   <div className="pb-20">
-                    <CardDescription className="select-none">
-                      Destination{" "}
+                    <CardDescription className="select-none flex items-center justify-between py-2 text-md">
+                      Destination
+                      <RefreshCcw
+                        className="ml-2 hover:cursor-pointer hover:text-primary size-4"
+                        variant={"link"}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleRefreshDrives();
+                        }}
+                      />
                     </CardDescription>
                     <div className="grid grid-cols-3 gap-4 items-center select-none">
-                      {drives.length > 0 ? (
+                      {loadingPaths ? (
+                        <div className="flex items-center justify-center col-span-3">
+                          <Loader2 className="size-6 animate-spin" />
+                        </div>
+                      ) : (
+                        drives.length > 0 &&
                         drives.map((driveLetter) => (
                           <div
                             key={driveLetter}
@@ -354,10 +369,6 @@ export default function Backup({ success, deviceID }) {
                             </label>
                           </div>
                         ))
-                      ) : (
-                        <div className="flex items-center space-x-2.5 w-full">
-                          <Loader2 className="m-[0.316rem] size-5 animate-spin justify-center w-full" />
-                        </div>
                       )}
                     </div>
 
@@ -443,12 +454,14 @@ export default function Backup({ success, deviceID }) {
               )}
 
               {/* Backup Card Footer */}
-              <CardFooterBackupAndStatus
-                deviceId={deviceId}
-                backupOptions={backupOptions}
-                backupStarted={backupStarted}
-                startBackup={startBackup}
-              />
+              <div className="mt-4">
+                <CardFooterBackupAndStatus
+                  deviceId={deviceId}
+                  backupOptions={backupOptions}
+                  backupStarted={backupStarted}
+                  startBackup={startBackup}
+                />
+              </div>
 
               {backupEnded && <Confetti />}
             </form>
