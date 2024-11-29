@@ -58,11 +58,6 @@ export default function Backup({ success, deviceID }) {
     setLoadingPaths(false);
   };
 
-  const handleDeleteSources = async () => {
-    const { completed, message } = await deleteSources(backupOptions);
-    console.log(completed, message);
-  };
-
   async function socketInitializer() {
     await fetch("/api/deviceStatus");
     socket = io();
@@ -244,7 +239,6 @@ export default function Backup({ success, deviceID }) {
     }));
 
     inputRef.current.focus();
-    dismissAll();
   };
 
   const handleNavBackAFolder = (e) => {

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Check, Loader2, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -23,18 +23,30 @@ export default function ConfirmDelete({ itemName = "item" }) {
   const handleDelete = async () => {
     if (isConfirmed) {
       setLoading(true);
-      const { completed, result, isEmpty } = await deleteSources({
+      const { completed, message, isEmpty } = await deleteSources({
         [itemName]: true,
       });
-      const toastTitle = completed
-        ? isEmpty
-          ? "Folder is already empty."
-          : "Successfully deleted"
-        : "Error";
-      toast({
-        title: toastTitle,
-        duration: 5000,
-      });
+      if (completed) {
+        toast({
+          title: (
+            <div className="flex items-center gap-2">
+              <Check className="size-4 text-green-500" />
+              {message}
+            </div>
+          ),
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: (
+            <div className="flex items-center gap-2">
+              <X className="size-4 text-red-500" />
+              {message}
+            </div>
+          ),
+          duration: 5000,
+        });
+      }
       setLoading(false);
       setIsPopupVisible(false);
     }
@@ -45,17 +57,9 @@ export default function ConfirmDelete({ itemName = "item" }) {
 
   return (
     <div className="flex items-center justify-center">
-      <Button
-        onClick={(e) => {
-          e.preventDefault();
-          showPopup();
-        }}
-        variant="destructive"
-        size="icon"
-        className="size-5"
-      >
-        <Trash2 className="size-4" />
-      </Button>
+      <div className="rounded-sm" onClick={showPopup}>
+        <Trash2 className="size-5 text-destructive hover:scale-110 transition-transform duration-200" />
+      </div>
 
       {isPopupVisible && (
         <Dialog open={isPopupVisible} onOpenChange={setIsPopupVisible}>
