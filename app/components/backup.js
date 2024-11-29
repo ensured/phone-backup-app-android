@@ -24,17 +24,20 @@ import { DeviceNotConnected } from "@/components/device-not-connected";
 import BackupOption from "./backupOption";
 import Confetti from "./Confetti";
 import CardFooterBackupAndStatus from "./CardFooterBackupAndStatus";
+import { Textarea } from "@/components/ui/textarea";
 
 let socket;
 
 export default function Backup({ success, deviceID }) {
   const [deviceId, setDeviceId] = useState(success ? deviceID : null);
   const [backupStarted, setBackupStarted] = useState(false);
+  const [lastDestInputValue, setLastDestInputValue] = useState("");
+  const [loadingSelectPaths, setLoadingSelectPaths] = useState(false);
   const [backupEnded, setBackupEnded] = useState(false);
   const [drives, setDrives] = useState([]);
   const [checkedDrive, setCheckedDrive] = useState(null);
   const [selectPathsAvailable, setSelectPathsAvailable] = useState([]);
-  const [loadingPaths, setLoadingPaths] = useState(false);
+  const [loadingPaths, setLoadingPaths] = useState(true);
   const [backupOptions, setBackupOptions] = useState({
     Camera: true,
     Download: true,
@@ -50,6 +53,7 @@ export default function Backup({ success, deviceID }) {
   const handleRefreshDrives = async () => {
     setLoadingPaths(true);
     const drives = await getDrives();
+    console.log(drives);
     setDrives(drives);
     setLoadingPaths(false);
   };
@@ -58,13 +62,13 @@ export default function Backup({ success, deviceID }) {
     await fetch("/api/deviceStatus");
     socket = io();
 
-    socket.on("device-status", (data) => {
-      if (data.status === "connected") {
-        setDeviceId(data.deviceId); // Set the connected deviceId
-      } else if (data.status === "disconnected") {
-        setDeviceId(""); // Clear the deviceId when disconnected
-      }
-    });
+    // socket.on("device-status", (data) => {
+    //   if (data.status === "connected") {
+    //     setDeviceId(data.deviceId); // Set the connected deviceId
+    //   } else if (data.status === "disconnected") {
+    //     setDeviceId(""); // Clear the deviceId when disconnected
+    //   }
+    // });
   }
 
   useEffect(() => {
@@ -100,6 +104,7 @@ export default function Backup({ success, deviceID }) {
         const driveLetter = storedOptions.destInputValue.slice(0, 2); // Assuming drive letter is 'C:'
         setCheckedDrive(driveLetter); // Set the checked drive based on saved destination
       }
+      setLoadingPaths(false);
     };
 
     fetchDrives();
@@ -271,7 +276,11 @@ export default function Backup({ success, deviceID }) {
 
   const handlePathsSelectClick = async (e) => {
     e.preventDefault();
-    setLoadingPaths(true);
+    if (backupOptions.destInputValue === lastDestInputValue) {
+      return;
+    }
+    setLastDestInputValue(backupOptions.destInputValue);
+    setLoadingSelectPaths(true);
 
     const { status, directories } = await getFoldersInDirectory(
       backupOptions.destInputValue
@@ -298,50 +307,53 @@ export default function Backup({ success, deviceID }) {
           </div>
         ),
       });
-      setLoadingPaths(false);
+      setLoadingSelectPaths(false);
       return;
     }
 
     setSelectPathsAvailable(directories);
     selectRef.current.focus(); // Focus the select element
     localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
-    setLoadingPaths(false);
+    setLoadingSelectPaths(false);
   };
 
   return (
-    <div className="flex justify-center items-center mt-20">
+    <div className="flex flex-col items-center justify-center p-6">
       {!deviceId ? (
         <DeviceNotConnected />
       ) : (
-        <Card className="w-[26.25rem]  dark:border-purple-700 border-[0.5px] relative">
+        <Card className="w-full max-w-md shadow-lg rounded-lg border border-gray-300">
           <CardHeader>
-            <CardTitle>Phone Backup</CardTitle>
+            <CardTitle className="text-xl font-semibold">
+              Phone Backup
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="">
+            <form className="space-y-6">
               {!backupStarted ? (
-                <div className="grid grid-cols-2 select-none" id="options">
-                  <BackupOption
-                    options={backupOptions}
-                    onChange={handleBackupOptionsChange}
-                  />
-
-                  {/* Destination */}
-                  <div className="pb-20">
-                    <CardDescription className="select-none flex items-center justify-between py-2 text-md">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="col-span-2">
+                    <BackupOption
+                      options={backupOptions}
+                      onChange={handleBackupOptionsChange}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <CardDescription className="flex items-center gap-2 text-md pb-1.5">
                       Destination
                       <RefreshCcw
-                        className="ml-2 hover:cursor-pointer hover:text-primary size-4"
-                        variant={"link"}
+                        className={`size-3.5 hover:cursor-pointer hover:text-primary duration-5000`}
+                        variant={"ghost"}
                         onClick={(e) => {
                           e.preventDefault();
                           handleRefreshDrives();
                         }}
                       />
                     </CardDescription>
-                    <div className="grid grid-cols-3 gap-4 items-center select-none">
+
+                    <div className="grid grid-cols-3 mt-1.5 gap-1.5">
                       {loadingPaths ? (
-                        <div className="flex items-center justify-center col-span-3">
+                        <div className="flex items-center justify-center w-full col-span-3">
                           <Loader2 className="size-6 animate-spin" />
                         </div>
                       ) : (
@@ -349,21 +361,19 @@ export default function Backup({ success, deviceID }) {
                         drives.map((driveLetter) => (
                           <div
                             key={driveLetter}
-                            className="flex items-center space-x-2"
+                            className="flex items-center space-x-1"
                           >
-                            <div className="relative flex items-center justify-center">
-                              <Checkbox
-                                id={driveLetter}
-                                checked={checkedDrive === driveLetter}
-                                onCheckedChange={() =>
-                                  handleDriveCheckboxChange(driveLetter)
-                                }
-                                className="appearance-none w-6 h-6 border border-gray-300 rounded-sm focus:mb-[0.29rem] mb-[0.29rem]"
-                              />
-                            </div>
+                            <Checkbox
+                              id={driveLetter}
+                              checked={checkedDrive === driveLetter}
+                              onCheckedChange={() =>
+                                handleDriveCheckboxChange(driveLetter)
+                              }
+                              className="w-6 h-6 border border-gray-300 rounded-sm"
+                            />
                             <label
                               htmlFor={driveLetter}
-                              className="cursor-pointer text-sm"
+                              className="text-sm cursor-pointer"
                             >
                               {driveLetter}
                             </label>
@@ -371,75 +381,77 @@ export default function Backup({ success, deviceID }) {
                         ))
                       )}
                     </div>
+                  </div>
 
-                    <div className="relative flex flex-col items-center space-x-2 select-none">
-                      <div className="absolute flex flex-col max-w-[280px] right-0 left-0">
-                        <div className="flex w-full justify-center items-center relative">
-                          {/* Input Field */}
-                          <Input
-                            ref={inputRef}
-                            autoComplete="true"
-                            onChange={handleDestInputChange}
-                            type="text"
-                            disabled={!checkedDrive}
-                            value={backupOptions.destInputValue}
-                            className="dark:border-[#895dd4f5] border rounded-b-none border-b-0 pr-8 focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] focus-visible:border-b"
-                          />
+                  <div className="w-full col-span-4 space-y-1">
+                    {loadingSelectPaths ? (
+                      <Skeleton className="relative w-full h-9 border border-primary">
+                        <Loader2 className="absolute w-full h-full animate-spin flex items-center justify-center" />
+                      </Skeleton>
+                    ) : (
+                      <Input
+                        ref={inputRef}
+                        autoComplete="true"
+                        onChange={handleDestInputChange}
+                        type="text"
+                        disabled={!checkedDrive}
+                        value={backupOptions.destInputValue}
+                        className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    )}
 
-                          {/* Trashcan Icon inside the Input */}
-                          <Button
-                            disabled={
-                              backupOptions.destInputValue.length === 3
-                                ? true
-                                : false
-                            }
-                            variant="ghost"
-                            onClick={handleClearInput}
-                            className="hover:cursor-pointer absolute right-0 p-2  hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md rounded-br-none rounded-l-none " //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
-                          >
-                            <Trash2Icon size={"17"} />
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            disabled={backupOptions.destInputValue.length === 3}
-                            onClick={handleNavBackAFolder}
-                            className="hover:cursor-pointer absolute -right-8 p-2 mt-[0.1rem] mr-[0.1rem] hover:bg-destructive hover:text-destructive-foreground text-destructive rounded-tr-md" //dark:hover:bg-red-800 hover:bg-[#ca2d2d]/90
-                          >
-                            <ArrowBigLeft size={"17"} />
-                          </Button>
-                        </div>
-
-                        <select
-                          disabled={
-                            !checkedDrive || !backupOptions.destInputValue
+                    <div className="flex flex-row items-center gap-1 ">
+                      <select
+                        disabled={
+                          !checkedDrive || !backupOptions.destInputValue
+                        }
+                        onClick={handlePathsSelectClick}
+                        ref={selectRef}
+                        className="border w-full border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                        onChange={(e) => {
+                          if (backupOptions.destInputValue.endsWith("\\")) {
+                            backupOptions.destInputValue += e.target.value;
+                          } else {
+                            backupOptions.destInputValue +=
+                              "\\" + e.target.value;
                           }
-                          onClick={handlePathsSelectClick}
-                          ref={selectRef}
-                          className="bg-background w-[100%] text-sm font-semibold hover:cursor-pointer dark:text-[#838383a1] text-[#535353c5]/70 border dark:border-[#895dd4f5] flex focus-visible:border-[#20C20E] dark:focus-visible:border-[#20C20E] rounded-b-sm"
-                          onChange={(e) => {
-                            if (backupOptions.destInputValue.endsWith("\\")) {
-                              backupOptions.destInputValue =
-                                backupOptions.destInputValue + e.target.value;
-                            } else {
-                              backupOptions.destInputValue =
-                                backupOptions.destInputValue +
-                                "\\" +
-                                e.target.value;
-                            }
-                          }}
+                        }}
+                      >
+                        <option value="">Select a folder</option>
+                        {selectPathsAvailable.map((path) => (
+                          <option
+                            key={path}
+                            value={path}
+                            className="text-lg w-full"
+                          >
+                            {path}
+                          </option>
+                        ))}
+                      </select>
+
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          disabled={
+                            backupOptions.destInputValue.length === 3 ||
+                            backupOptions.destInputValue === ""
+                          }
+                          variant="ghost"
+                          onClick={handleClearInput}
+                          className="p-2 text-red-500 rounded-md hover:bg-destructive hover:text-white duration-500"
                         >
-                          <option value="">Select a folder</option>
-                          {selectPathsAvailable.map((path) => (
-                            <option
-                              key={path}
-                              value={path}
-                              className="text-lg w-full text-primary"
-                            >
-                              {path}
-                            </option>
-                          ))}
-                        </select>
+                          <Trash2Icon className="size-5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={
+                            backupOptions.destInputValue.length === 3 ||
+                            backupOptions.destInputValue === ""
+                          }
+                          onClick={handleNavBackAFolder}
+                          className="p-2 text-gray-500 rounded-md"
+                        >
+                          <ArrowBigLeft className="size-6" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -447,9 +459,9 @@ export default function Backup({ success, deviceID }) {
               ) : (
                 // Skeletons when backup are in progress
                 <div className="flex flex-col gap-4 mb-4">
-                  <Skeleton className="w-[369px] h-[27px] rounded-full" />
-                  <Skeleton className="w-[369px] h-[27px] rounded-full" />
-                  <Skeleton className="w-[369px] h-[27px] rounded-full" />
+                  <Skeleton className="w-full h-8 rounded-md" />
+                  <Skeleton className="w-full h-8 rounded-md" />
+                  <Skeleton className="w-full h-8 rounded-md" />
                 </div>
               )}
 
