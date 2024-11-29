@@ -7,8 +7,8 @@ const BackupOption = ({ options, onChange }) => {
   };
 
   return (
-    <div className="flex flex-col gap-y-1.5">
-      <CardDescription className="select-none mb-1.5 flex items-center text-md">
+    <div className="flex flex-col gap-y-1.5 ">
+      <CardDescription className="select-none flex items-center text-md">
         Source
       </CardDescription>
       {Object.keys(options)
@@ -19,13 +19,13 @@ const BackupOption = ({ options, onChange }) => {
           ) => (
             <div
               key={option}
-              className="flex items-center dark:hover:bg-[#673ab790] hover:bg-[#673ab799] rounded-r-[1.75rem]"
+              className="py-[0.069rem] bg-secondary/50 flex items-center hover:bg-secondary rounded-r-[1.75rem] "
             >
               <Checkbox
                 id={option} // Use option as ID for better accessibility
                 checked={options[option]}
                 onCheckedChange={() => handleCheckboxChange(option)}
-                className="h-6 w-6 mr-2"
+                className="size-5 mr-2"
               />
               <label
                 htmlFor={option}

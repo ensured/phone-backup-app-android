@@ -319,38 +319,43 @@ export default function Backup({ success, deviceID }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-6">
+    <div className="flex flex-col items-center justify-center p-6 select-none">
       {!deviceId ? (
         <DeviceNotConnected />
       ) : (
         <Card className="w-full max-w-md shadow-lg rounded-lg border border-gray-300">
           <CardHeader>
-            <CardTitle className="text-xl font-semibold">
+            <CardTitle className="text-xl font-semibold text-center select-none">
               Phone Backup
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form className="space-y-6">
               {!backupStarted ? (
-                <div className="grid grid-cols-6 gap-4">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-6 gap-x-1.5 gap-y-4">
+                  <div className="col-span-2 bg-secondary/30 rounded-md p-1.5">
                     <BackupOption
                       options={backupOptions}
                       onChange={handleBackupOptionsChange}
                     />
                   </div>
-                  <div className="col-span-4">
-                    <CardDescription className="flex items-center gap-2 text-md pb-1.5">
+                  <div className="col-span-4 bg-secondary/30 rounded-md p-1.5">
+                    <div className="flex items-center justify-between gap-2 text-md text-muted-foreground">
                       Destination
-                      <RefreshCcw
-                        className={`size-3.5 hover:cursor-pointer hover:text-primary duration-5000`}
-                        variant={"ghost"}
+                      <div
+                        className="flex items-center justify-center gap-1 hover:cursor-pointer duration-200 hover:text-primary "
                         onClick={(e) => {
                           e.preventDefault();
                           handleRefreshDrives();
                         }}
-                      />
-                    </CardDescription>
+                      >
+                        <span className="text-xs">Refresh</span>
+                        <RefreshCcw
+                          className={`size-3.5 hover:cursor-pointer hover:text-primary `}
+                          variant={"ghost"}
+                        />
+                      </div>
+                    </div>
 
                     <div className="grid grid-cols-2 mt-1.5 gap-1.5">
                       {loadingPaths ? (
@@ -362,7 +367,7 @@ export default function Backup({ success, deviceID }) {
                         drives.map((drive) => (
                           <div
                             key={drive.letter}
-                            className="flex items-center space-x-2 bg-secondary/50 rounded-md p-1.5"
+                            className="flex items-center space-x-2 bg-secondary/50 rounded-md p-1.5 hover:bg-secondary"
                           >
                             <Checkbox
                               id={drive.letter}
@@ -370,16 +375,18 @@ export default function Backup({ success, deviceID }) {
                               onCheckedChange={() =>
                                 handleDriveCheckboxChange(drive.letter)
                               }
-                              className="w-4 h-4 border border-gray-300 rounded-sm"
+                              className="size-5 border border-gray-300 rounded-sm"
                             />
                             <label
                               htmlFor={drive.letter}
-                              className="text-sm font-medium cursor-pointer"
+                              className="text-md font-medium cursor-pointer flex items-center justify-between"
                             >
-                              <span className="font-bold">{drive.letter}</span>
+                              <span className="font-bold">
+                                {drive.letter.replace(":", "")}
+                              </span>
                               {drive.name && (
-                                <span className="text-muted-foreground ml-1">
-                                  {drive.name}
+                                <span className="text-muted-foreground ml-1 text-xs">
+                                  ({drive.name})
                                 </span>
                               )}
                             </label>
@@ -389,7 +396,7 @@ export default function Backup({ success, deviceID }) {
                     </div>
                   </div>
 
-                  <div className="w-full col-span-4 space-y-1">
+                  <div className="w-full col-span-6 space-y-1">
                     {loadingSelectPaths ? (
                       <Skeleton className="relative w-full h-9 border border-primary">
                         <Loader2 className="absolute w-full h-full animate-spin flex items-center justify-center" />
@@ -406,14 +413,14 @@ export default function Backup({ success, deviceID }) {
                       />
                     )}
 
-                    <div className="flex flex-row items-center gap-1 ">
+                    <div className="flex flex-row items-center gap-1">
                       <select
                         disabled={
                           !checkedDrive || !backupOptions.destInputValue
                         }
                         onClick={handlePathsSelectClick}
                         ref={selectRef}
-                        className="border w-full border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="border w-full border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary hover:cursor-pointer"
                         onChange={(e) => {
                           if (backupOptions.destInputValue.endsWith("\\")) {
                             backupOptions.destInputValue += e.target.value;
@@ -435,20 +442,35 @@ export default function Backup({ success, deviceID }) {
                         ))}
                       </select>
 
-                      <div className="flex items-center justify-center gap-1">
+                      <div
+                        className={`flex items-center gap-1 ${
+                          backupOptions.destInputValue.length === 3 ||
+                          backupOptions.destInputValue === ""
+                            ? "cursor-not-allowed"
+                            : ""
+                        }`}
+                      >
                         <Button
                           disabled={
                             backupOptions.destInputValue.length === 3 ||
                             backupOptions.destInputValue === ""
                           }
-                          variant="ghost"
+                          variant="outline"
                           onClick={handleClearInput}
-                          className="p-2 text-red-500 rounded-md hover:bg-destructive hover:text-white duration-500"
+                          className="p-2 text-red-500 rounded-md hover:bg-destructive hover:cursor"
                         >
-                          <Trash2Icon className="size-5" />
+                          <Trash2Icon
+                            className={`size-5 hover:cursor-pointer duration-200 ${
+                              backupOptions.destInputValue.length === 3 ||
+                              backupOptions.destInputValue === ""
+                                ? "text-gray-500 cursor-not-allowed"
+                                : "text-red-500"
+                            }`}
+                          />
                         </Button>
+
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           disabled={
                             backupOptions.destInputValue.length === 3 ||
                             backupOptions.destInputValue === ""
