@@ -5,6 +5,7 @@ import {
   getDrives,
   getDeviceStatus,
   getFoldersInDirectory,
+  deleteSources,
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,7 +25,6 @@ import { DeviceNotConnected } from "@/components/device-not-connected";
 import BackupOption from "./backupOption";
 import Confetti from "./Confetti";
 import CardFooterBackupAndStatus from "./CardFooterBackupAndStatus";
-import { Textarea } from "@/components/ui/textarea";
 
 let socket;
 
@@ -48,7 +48,7 @@ export default function Backup({ success, deviceID }) {
   const selectRef = useRef(null); // Create a ref for the select element
   const inputRef = useRef(null);
 
-  const { toast, dismissAll } = useToast();
+  const { toast } = useToast();
 
   const handleRefreshDrives = async () => {
     setLoadingPaths(true);
@@ -56,6 +56,11 @@ export default function Backup({ success, deviceID }) {
     console.log(drives);
     setDrives(drives);
     setLoadingPaths(false);
+  };
+
+  const handleDeleteSources = async () => {
+    const { completed, message } = await deleteSources(backupOptions);
+    console.log(completed, message);
   };
 
   async function socketInitializer() {
@@ -277,6 +282,7 @@ export default function Backup({ success, deviceID }) {
 
   const handlePathsSelectClick = async (e) => {
     e.preventDefault();
+
     if (backupOptions.destInputValue === lastDestInputValue) {
       return;
     }
@@ -339,7 +345,7 @@ export default function Backup({ success, deviceID }) {
                       onChange={handleBackupOptionsChange}
                     />
                   </div>
-                  <div className="col-span-4 bg-secondary/30 rounded-md p-1.5">
+                  <div className="col-span-4 bg-secondary/30 rounded-md p-1.5 max-h-[120.56px] overflow-y-auto">
                     <div className="flex items-center justify-between gap-2 text-md text-muted-foreground">
                       Destination
                       <div
@@ -502,7 +508,6 @@ export default function Backup({ success, deviceID }) {
                   startBackup={startBackup}
                 />
               </div>
-
               {backupEnded && <Confetti />}
             </form>
           </CardContent>

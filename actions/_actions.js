@@ -23,6 +23,101 @@ function isValidPath(path) {
   return regex.test(path);
 }
 
+export async function deleteSources(backupOptions) {
+  const message = [];
+  const emptyStatus = {};
+
+  if (backupOptions.Camera) {
+    try {
+      // Check if the Camera directory is empty (including all subdirectories)
+      const output = execSync(
+        `adb shell find /storage/emulated/0/DCIM/Camera -type f`
+      )
+        .toString()
+        .trim();
+      const isEmpty = output.length === 0;
+
+      if (isEmpty) {
+        emptyStatus.Camera = "The Camera directory is empty.";
+      } else {
+        emptyStatus.Camera = "The Camera directory is not empty.";
+      }
+
+      execSync(`adb shell rm -rf /storage/emulated/0/DCIM/Camera`);
+      message.push("Camera");
+    } catch (error) {
+      console.error("Failed to delete Camera directory:", error.message);
+      return {
+        completed: false,
+        message: "Failed to delete Camera directory. It may not be empty.",
+        emptyStatus,
+      };
+    }
+  }
+
+  if (backupOptions.Download) {
+    try {
+      // Check if the Download directory is empty (including all subdirectories)
+      const output = execSync(
+        `adb shell find /storage/emulated/0/Download -type f`
+      )
+        .toString()
+        .trim();
+      const isEmpty = output.length === 0;
+
+      if (isEmpty) {
+        emptyStatus.Download = "The Download directory is empty.";
+      } else {
+        emptyStatus.Download = "The Download directory is not empty.";
+      }
+
+      execSync(`adb shell rm -rf /storage/emulated/0/Download`);
+      message.push("Download");
+    } catch (error) {
+      console.error("Failed to delete Download directory:", error.message);
+      return {
+        completed: false,
+        message: "Failed to delete Download directory. It may not be empty.",
+        emptyStatus,
+      };
+    }
+  }
+
+  if (backupOptions.Pictures) {
+    try {
+      // Check if the Pictures directory is empty (including all subdirectories)
+      const output = execSync(
+        `adb shell find /storage/emulated/0/Pictures -type f`
+      )
+        .toString()
+        .trim();
+      const isEmpty = output.length === 0;
+
+      if (isEmpty) {
+        emptyStatus.Pictures = "The Pictures directory is empty.";
+      } else {
+        emptyStatus.Pictures = "The Pictures directory is not empty.";
+      }
+
+      execSync(`adb shell rm -rf /storage/emulated/0/Pictures`);
+      message.push("Pictures");
+    } catch (error) {
+      console.error("Failed to delete Pictures directory:", error.message);
+      return {
+        completed: false,
+        message: "Failed to delete Pictures directory. It may not be empty.",
+        emptyStatus,
+      };
+    }
+  }
+
+  return {
+    completed: true,
+    message: "Deleted successfully: " + message.join(", "),
+    isEmpty: emptyStatus.Pictures,
+  };
+}
+
 export async function backup(backupOptions, destinationPath) {
   const client = Adb.createClient();
   const devices = await client.listDevices();

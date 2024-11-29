@@ -1,5 +1,6 @@
 import { CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import ConfirmDelete from "@/components/confirm-delete";
 
 const BackupOption = ({ options, onChange }) => {
   const handleCheckboxChange = (option) => {
@@ -9,7 +10,12 @@ const BackupOption = ({ options, onChange }) => {
   return (
     <div className="flex flex-col gap-y-1.5 ">
       <CardDescription className="select-none flex items-center text-md">
-        Source
+        {/* show sources if more than 1 source is checked */}
+        {Object.keys(options).filter(
+          (option) => option !== "destInputValue" && options[option]
+        ).length > 1
+          ? "Sources"
+          : "Source"}
       </CardDescription>
       {Object.keys(options)
         .filter((option) => option !== "destInputValue")
@@ -29,9 +35,10 @@ const BackupOption = ({ options, onChange }) => {
               />
               <label
                 htmlFor={option}
-                className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                className="flex items-center w-full gap-x-0.5 justify-between cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
                 {option} {/* Display the actual option name */}
+                <ConfirmDelete itemName={option} />
               </label>
             </div>
           )
