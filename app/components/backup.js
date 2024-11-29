@@ -62,13 +62,14 @@ export default function Backup({ success, deviceID }) {
     await fetch("/api/deviceStatus");
     socket = io();
 
-    // socket.on("device-status", (data) => {
-    //   if (data.status === "connected") {
-    //     setDeviceId(data.deviceId); // Set the connected deviceId
-    //   } else if (data.status === "disconnected") {
-    //     setDeviceId(""); // Clear the deviceId when disconnected
-    //   }
-    // });
+    socket.on("device-status", (data) => {
+      if (data.status === "connected") {
+        setDeviceId(data.deviceId); // Set the connected deviceId
+      }
+      if (data.status === "disconnected") {
+        setDeviceId(""); // Clear the deviceId when disconnected
+      }
+    });
   }
 
   useEffect(() => {
@@ -331,14 +332,14 @@ export default function Backup({ success, deviceID }) {
           <CardContent>
             <form className="space-y-6">
               {!backupStarted ? (
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-6 gap-4">
                   <div className="col-span-2">
                     <BackupOption
                       options={backupOptions}
                       onChange={handleBackupOptionsChange}
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="col-span-4">
                     <CardDescription className="flex items-center gap-2 text-md pb-1.5">
                       Destination
                       <RefreshCcw
@@ -351,31 +352,36 @@ export default function Backup({ success, deviceID }) {
                       />
                     </CardDescription>
 
-                    <div className="grid grid-cols-3 mt-1.5 gap-1.5">
+                    <div className="grid grid-cols-2 mt-1.5 gap-1.5">
                       {loadingPaths ? (
-                        <div className="flex items-center justify-center w-full col-span-3">
+                        <div className="flex items-center justify-center w-full col-span-2">
                           <Loader2 className="size-6 animate-spin" />
                         </div>
                       ) : (
                         drives.length > 0 &&
-                        drives.map((driveLetter) => (
+                        drives.map((drive) => (
                           <div
-                            key={driveLetter}
-                            className="flex items-center space-x-1"
+                            key={drive.letter}
+                            className="flex items-center space-x-2 bg-secondary/50 rounded-md p-1.5"
                           >
                             <Checkbox
-                              id={driveLetter}
-                              checked={checkedDrive === driveLetter}
+                              id={drive.letter}
+                              checked={checkedDrive === drive.letter}
                               onCheckedChange={() =>
-                                handleDriveCheckboxChange(driveLetter)
+                                handleDriveCheckboxChange(drive.letter)
                               }
-                              className="w-6 h-6 border border-gray-300 rounded-sm"
+                              className="w-4 h-4 border border-gray-300 rounded-sm"
                             />
                             <label
-                              htmlFor={driveLetter}
-                              className="text-sm cursor-pointer"
+                              htmlFor={drive.letter}
+                              className="text-sm font-medium cursor-pointer"
                             >
-                              {driveLetter}
+                              <span className="font-bold">{drive.letter}</span>
+                              {drive.name && (
+                                <span className="text-muted-foreground ml-1">
+                                  {drive.name}
+                                </span>
+                              )}
                             </label>
                           </div>
                         ))

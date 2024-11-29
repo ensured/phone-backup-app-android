@@ -165,15 +165,25 @@ export async function getFoldersInDirectory(directory) {
 export async function getDrives() {
   try {
     const output = execSync(
-      "wmic logicaldisk get caption /format:List"
+      "wmic logicaldisk get caption, volumename /format:List"
     ).toString();
     const drives = output
       .split("\n")
-      .filter((line) => line.includes("Caption"))
-      .map((line) => {
-        const driveLetters = line.split("=")[1].trim();
-        return driveLetters;
-      });
+      .filter((line) => line.includes("Caption") || line.includes("VolumeName"))
+      .reduce(
+        (acc, line) => {
+          const [key, value] = line.split("=");
+          if (key.trim() === "Caption") {
+            acc.currentDrive = { letter: value.trim() }; // Store current drive letter
+          } else if (key.trim() === "VolumeName" && acc.currentDrive) {
+            acc.currentDrive.name = value.trim(); // Store corresponding drive name
+            acc.drives.push(acc.currentDrive); // Add to drives array
+            acc.currentDrive = null; // Reset for next drive
+          }
+          return acc;
+        },
+        { drives: [], currentDrive: null }
+      ).drives;
 
     return drives;
   } catch (error) {
