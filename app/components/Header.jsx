@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { ADLaM_Display } from "next/font/google";
 import Link from "next/link";
-
+import { Skeleton } from "@/components/ui/skeleton";
 const adlam = ADLaM_Display({
   subsets: ["latin"],
   display: "swap",
@@ -23,14 +23,11 @@ const Header = () => {
   }, []);
 
   if (!mounted) {
-    // Show a loading state or a non-themed static header while mounting
+    // Show a loading state using Skeleton while mounting
     return (
       <header className="flex items-center justify-between p-4 text-foreground bg--background shadow-md shadow-border">
-        <Link href="/">
-          <Button variant="outline" size="icon">
-            <Loader2 className="h-[1.2rem] w-[1.2rem] animate-spin" />
-          </Button>
-        </Link>
+        <Skeleton className="h-9 w-52" /> {/* Skeleton for the title */}
+        <Skeleton className="h-9 w-8" /> {/* Skeleton for the button */}
       </header>
     );
   }
