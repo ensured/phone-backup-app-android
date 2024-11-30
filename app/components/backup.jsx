@@ -8,7 +8,13 @@ import {
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Trash2Icon, ArrowBigLeft, RefreshCcw } from "lucide-react";
+import {
+  Loader2,
+  Trash2Icon,
+  ArrowBigLeft,
+  RefreshCcw,
+  FileIcon,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardTitle, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,7 +28,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -30,25 +35,46 @@ import {
 
 let socket;
 
-const skippedFilesDialog = ({ skipped }) => {
+const SkippedFilesDialog = ({ skipped }) => {
   return (
-    <Dialog>
+    <Dialog className="select-none pointer-events-none z-100">
       <DialogTrigger asChild>
-        <Button variant="outline">Skipped Files</Button>
+        <Button variant="outline">
+          <div className="flex items-center gap-1">
+            <FileIcon className="size-4" />
+            View skipped file{skipped.length === 1 ? "" : "s"}
+          </div>
+        </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] pointer-events-none select-none">
         <DialogHeader>
-          <DialogTitle>{skipped.length} Skipped Files</DialogTitle>
-          <DialogDescription>
-            <div className="flex flex-col gap-2">
-              {skipped &&
-                skipped.map((file) => (
-                  <div key={file} className="p-2 border rounded-md shadow-sm">
-                    {file}
-                  </div>
-                ))}
+          <DialogTitle>
+            <div>
+              <div>
+                {skipped.length} Skipped File
+                {skipped.length === 1 ? "" : "s"}
+              </div>
+              <div>
+                {skipped.length > 100 && (
+                  <span className="text-xs text-muted-foreground">
+                    Consider deleting some files to avoid skipping every time
+                    you backup.
+                  </span>
+                )}
+              </div>
             </div>
-          </DialogDescription>
+          </DialogTitle>
+          <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto ">
+            {skipped &&
+              skipped.map((file) => (
+                <div
+                  key={file}
+                  className="p-2 border rounded-md shadow-sm select-none"
+                >
+                  {file}
+                </div>
+              ))}
+          </div>
         </DialogHeader>
       </DialogContent>
     </Dialog>
@@ -201,7 +227,7 @@ export default function Backup({ success, deviceID }) {
       setBackupEnded(true);
       toast({
         title: message,
-        description: skippedFilesDialog({ skipped }),
+        description: <SkippedFilesDialog skipped={skipped} />,
         duration: 86400,
         variant: "success",
       });

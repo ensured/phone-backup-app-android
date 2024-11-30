@@ -210,6 +210,8 @@ export async function deleteSources(backupOptions) {
 }
 
 export async function backup(backupOptions, destinationPath) {
+  const startTime = new Date(); // Capture the start time
+
   const skipped = [];
   const client = Adb.createClient();
   const devices = await client.listDevices();
@@ -262,9 +264,25 @@ export async function backup(backupOptions, destinationPath) {
       }
     }
 
+    const endTime = new Date(); // Capture the end time
+
+    // Calculate the time difference in milliseconds
+    const timeDifference = endTime - startTime;
+
+    // Convert milliseconds to seconds
+    const timeDifferenceInSeconds = Math.ceil(timeDifference / 1000);
+
+    console.log(`Time taken: ${timeDifferenceInSeconds} seconds`);
+
     return {
       completed: true,
-      message: "Backup completed successfully",
+      message:
+        "Successfully backed up files in " +
+        timeDifferenceInSeconds +
+        " second" +
+        (timeDifferenceInSeconds === 1 ? "" : "s") +
+        ". Skipped files: " +
+        skipped.length,
       skipped,
     };
   } catch (error) {

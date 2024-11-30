@@ -22,8 +22,8 @@ export default function RootLayout({ children }) {
             <Header />
             {children}
           </div>
+          <Toaster />
         </ThemeProvider>
-        <Toaster />
       </body>
     </html>
   );
