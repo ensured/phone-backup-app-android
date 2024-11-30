@@ -5,19 +5,12 @@ import {
   getDrives,
   getDeviceStatus,
   getFoldersInDirectory,
-  deleteSources,
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Trash2Icon, ArrowBigLeft, RefreshCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Card,
-  CardTitle,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardTitle, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import io from "socket.io-client";
@@ -25,8 +18,42 @@ import { DeviceNotConnected } from "@/components/device-not-connected";
 import BackupOption from "./backupOption";
 import Confetti from "./Confetti";
 import CardFooterBackupAndStatus from "./CardFooterBackupAndStatus";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../../components/ui/dialog";
 
 let socket;
+
+const skippedFilesDialog = ({ skipped }) => {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Skipped Files</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{skipped.length} Skipped Files</DialogTitle>
+          <DialogDescription>
+            <div className="flex flex-col gap-2">
+              {skipped &&
+                skipped.map((file) => (
+                  <div key={file} className="p-2 border rounded-md shadow-sm">
+                    {file}
+                  </div>
+                ))}
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default function Backup({ success, deviceID }) {
   const [deviceId, setDeviceId] = useState(success ? deviceID : null);
@@ -161,7 +188,7 @@ export default function Backup({ success, deviceID }) {
 
     const startTime = new Date();
 
-    const { completed, message } = await backup(
+    const { completed, message, skipped } = await backup(
       backupOptions,
       backupOptions.destInputValue
     );
@@ -174,9 +201,7 @@ export default function Backup({ success, deviceID }) {
       setBackupEnded(true);
       toast({
         title: message,
-        description: `Backed up at: ${formattedDate} (Duration: ${formatDuration(
-          duration
-        )})`,
+        description: skippedFilesDialog({ skipped }),
         duration: 86400,
         variant: "success",
       });

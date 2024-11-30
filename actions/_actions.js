@@ -3,6 +3,7 @@ import Adb from "@devicefarmer/adbkit";
 import { execSync } from "child_process";
 import generateDate from "../util/date";
 import fs from "fs";
+import path from "path";
 
 // Backup source definitions
 const backupSrcs = [
@@ -16,11 +17,102 @@ function escapeBackslashes(path) {
   return path.replace(/\\/g, "\\\\");
 }
 
-// Function to validate Windows path
-function isValidPath(path) {
-  // Updated regex to validate Windows path
-  const regex = /^[a-zA-Z]:\\(?:[^<>:"|?*\\\r\n]+\\)*[^<>:"|?*\\\r\n]*$/;
-  return regex.test(path);
+// Function to check if a file already exists in any "Backup_" directory
+async function fileExistsInBackup(fileName, backupDir) {
+  const files = fs.readdirSync(backupDir, { withFileTypes: true });
+
+  for (const file of files) {
+    const filePath = path.join(backupDir, file.name);
+
+    if (file.isDirectory() && file.name.startsWith("Backup_")) {
+      // Recursively check in subdirectories that start with "Backup_"
+      const exists = await fileExistsInBackup(fileName, filePath);
+      if (exists) return true;
+    } else if (file.name === fileName) {
+      return true; // File exists
+    }
+  }
+
+  return false; // File does not exist
+}
+
+// Function to pull files recursively
+async function pullFilesRecursively(directory, outputDir) {
+  let skipped = [];
+  try {
+    const escapedDirectory = escapeBackslashes(directory);
+    const escapedOutputDir = escapeBackslashes(outputDir);
+
+    // Get the list of files and directories in the source directory
+    const items = execSync(`adb shell ls -p "${escapedDirectory}"`)
+      .toString()
+      .trim()
+      .split("\n");
+
+    for (const item of items) {
+      const itemName = item.trim();
+      const isDirectory = itemName.endsWith("/");
+
+      if (isDirectory) {
+        // Recursively handle subdirectories
+        try {
+          const subDir = itemName.slice(0, -1); // Remove trailing slash
+          const newOutputDir = path.join(outputDir, subDir);
+          fs.mkdirSync(newOutputDir, { recursive: true });
+          await pullFilesRecursively(
+            path.join(directory, subDir),
+            newOutputDir
+          );
+        } catch (error) {
+          console.error(
+            `Error creating directory ${newOutputDir}:`,
+            error.message
+          );
+        }
+      } else {
+        try {
+          // Check if the file already exists in the backup directory
+          const exists = await fileExistsInBackup(itemName, outputDir);
+          if (exists) {
+            console.log(`Skipping existing file: ${itemName}`);
+            skipped.push(itemName);
+            continue; // Skip to the next file
+          }
+
+          // Pull the file if it doesn't exist
+          const output = execSync(
+            `adb pull "${escapedDirectory}/${itemName}" "${escapedOutputDir}"`
+          );
+          const outputString = output.toString();
+
+          if (outputString.includes("device unauthorized")) {
+            return {
+              completed: false,
+              message:
+                "Device is unauthorized. Please make sure you have enabled USB debugging on the device and that your device is connected to your computer via USB.",
+              skipped,
+            };
+          }
+        } catch (error) {
+          console.error(`Error pulling file ${itemName}:`, error.message);
+        }
+      }
+    }
+
+    return { completed: true, message: "File pull successful", skipped }; // File pull successful
+  } catch (e) {
+    if (e.message.includes("device unauthorized")) {
+      return {
+        completed: false,
+        message:
+          "Device is unauthorized. Please check for a confirmation dialog on your device.",
+      };
+    }
+    return {
+      completed: false,
+      message: e.message,
+    };
+  }
 }
 
 export async function deleteSources(backupOptions) {
@@ -118,6 +210,7 @@ export async function deleteSources(backupOptions) {
 }
 
 export async function backup(backupOptions, destinationPath) {
+  const skipped = [];
   const client = Adb.createClient();
   const devices = await client.listDevices();
   if (devices.length === 0) {
@@ -131,18 +224,9 @@ export async function backup(backupOptions, destinationPath) {
     destPathWindows += "\\";
   }
 
-  // Validate destination path
-  if (!isValidPath(destPathWindows)) {
-    return {
-      completed: false,
-      message: `Invalid backup destination: ${destPathWindows}. Please ensure it is a valid directory.`,
-    };
-  }
-
   // Create directories if they don't exist
   try {
     if (!fs.existsSync(destPathWindows)) {
-      console.log(`Creating directory: ${destPathWindows}`);
       fs.mkdirSync(destPathWindows, { recursive: true });
     }
   } catch (error) {
@@ -157,65 +241,37 @@ export async function backup(backupOptions, destinationPath) {
   }
 
   try {
-    async function pullFilesRecursively(directory, outputDir) {
-      try {
-        const escapedDirectory = escapeBackslashes(directory);
-        const escapedOutputDir = escapeBackslashes(outputDir);
-        const output = execSync(
-          `adb pull "${escapedDirectory}" "${escapedOutputDir}"`
-        );
-        const outputString = output.toString();
-
-        if (outputString.includes("device unauthorized")) {
-          return {
-            completed: false,
-            message:
-              "Device is unauthorized. Please make sure you have enabled USB debugging on the device and that your device is connected to your computer via USB.",
-          };
-        }
-
-        return { completed: true }; // File pull successful
-      } catch (e) {
-        if (e.message.includes("device unauthorized")) {
-          return {
-            completed: false,
-            message:
-              "Device is unauthorized. Please check for a confirmation dialog on your device.",
-          };
-        }
-        return {
-          completed: false,
-          message: e.message,
-        };
-      }
-    }
-
-    const selectedLocations = backupSrcs.filter(
+    for (const location of backupSrcs.filter(
       (location) => backupOptions[location.key]
-    );
-
-    for (const location of selectedLocations) {
+    )) {
       const { src, dest } = location;
-      const outputDir = `${destPathWindows}${generateDate()}\\`;
+      const outputDir = `${destPathWindows}Backup_${dest}_${generateDate()}\\`;
 
       fs.mkdirSync(outputDir, { recursive: true });
 
-      const pullResult = await pullFilesRecursively(src, outputDir);
+      const result = await pullFilesRecursively(src, outputDir);
+      skipped.push(...result.skipped);
 
       // Check for any errors from pulling files
-      if (!pullResult.completed) {
-        return pullResult; // Exit early if an error occurred
+      if (!result.completed) {
+        return {
+          completed: result.completed,
+          message: result.message,
+          skipped,
+        }; // Exit early if an error occurred
       }
     }
 
     return {
       completed: true,
       message: "Backup completed successfully",
+      skipped,
     };
   } catch (error) {
     return {
       completed: false,
       message: "An error occurred during backup",
+      skipped,
     };
   }
 }
