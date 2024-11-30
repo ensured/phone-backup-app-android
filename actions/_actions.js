@@ -281,8 +281,7 @@ export async function backup(backupOptions, destinationPath) {
         timeDifferenceInSeconds +
         " second" +
         (timeDifferenceInSeconds === 1 ? "" : "s") +
-        ". Skipped files: " +
-        skipped.length,
+        `<br /> Skipped ${skipped.length} files`,
       skipped,
     };
   } catch (error) {

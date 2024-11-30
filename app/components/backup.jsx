@@ -27,7 +27,6 @@ import CardFooterBackupAndStatus from "./CardFooterBackupAndStatus";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -138,8 +137,8 @@ export default function Backup({ success, deviceID }) {
 
       // Only set default drive if no destination is set in backupOptions
       if (!storedOptions?.destInputValue) {
-        const defaultDrive = drives[0] + "\\"; // Default drive path
-        setCheckedDrive(drives[0]); // Set the first available drive as default
+        const defaultDrive = "C:" + "\\"; // Default drive path
+        setCheckedDrive("C"); // Set the first available drive as default
 
         const newBackupOptions = {
           ...backupOptions,
@@ -220,14 +219,20 @@ export default function Backup({ success, deviceID }) {
     );
 
     const formattedDate = new Date().toLocaleString("en-US", options);
-    const endTime = new Date();
-    const duration = endTime - startTime; // Calculate duration in milliseconds
 
     if (completed) {
       setBackupEnded(true);
       toast({
-        title: message,
-        description: <SkippedFilesDialog skipped={skipped} />,
+        title: (
+          <div className="grid grid-cols-1 gap-1">
+            {message.split("<br />").map((line, index) => (
+              <div key={index} className="text-sm text-muted-foreground">
+                - {line}
+              </div>
+            ))}
+            <SkippedFilesDialog skipped={skipped} />
+          </div>
+        ),
         duration: 86400,
         variant: "success",
       });
@@ -241,19 +246,6 @@ export default function Backup({ success, deviceID }) {
     }
     setBackupStarted(false);
   };
-
-  // Helper function to format duration in a human-readable format
-  function formatDuration(milliseconds) {
-    const seconds = Math.floor(milliseconds / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-
-    const hoursStr = hours > 0 ? `${hours}h ` : "";
-    const minutesStr = minutes > 0 ? `${minutes}m ` : "";
-    const secondsStr = seconds % 60 ? `${seconds}s` : "";
-
-    return `${hoursStr}${minutesStr}${secondsStr}`;
-  }
 
   const handleDestInputChange = (event) => {
     setBackupOptions((prev) => ({
