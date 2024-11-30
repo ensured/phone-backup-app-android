@@ -63,7 +63,7 @@ const SkippedFilesDialog = ({ skipped }) => {
               </div>
             </div>
           </DialogTitle>
-          <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto ">
+          <div className="flex flex-col gap-2 max-h-[52vh] overflow-y-auto ">
             {skipped &&
               skipped.map((file) => (
                 <div
