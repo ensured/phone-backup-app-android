@@ -12,6 +12,12 @@ const backupSrcs = [
   { src: "/storage/emulated/0/Pictures", dest: "Pictures", key: "Pictures" },
 ];
 
+// const videoExts = [".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv", ".webm"];
+// const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"];
+// const audioExts = [".mp3", ".wav", ".aac", ".flac", ".m4a", ".ogg", ".wma"];
+// const documentExts = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"];
+// const otherExts = [".txt", ".csv", ".json", ".xml", ".html", ".css", ".js"];
+
 // Function to escape backslashes
 function escapeBackslashes(path) {
   return path.replace(/\\/g, "\\\\");
@@ -39,17 +45,19 @@ async function fileExistsInBackup(fileName, backupDir) {
 // Function to pull files recursively
 async function pullFilesRecursively(directory, outputDir) {
   let skipped = [];
+  let totalFiles = 0;
   try {
     const escapedDirectory = escapeBackslashes(directory);
     const escapedOutputDir = escapeBackslashes(outputDir);
 
     // Get the list of files and directories in the source directory
-    const items = execSync(`adb shell ls -p "${escapedDirectory}"`)
+    const items = execSync(`adb shell ls -1 "${escapedDirectory}"`)
       .toString()
       .trim()
       .split("\n");
 
     for (const item of items) {
+      // Trim whitespace and sanitize the item name
       const itemName = item.trim();
       const isDirectory = itemName.endsWith("/");
 
@@ -70,11 +78,10 @@ async function pullFilesRecursively(directory, outputDir) {
           );
         }
       } else {
+        totalFiles++; // Increment for every file, including skipped ones
         try {
-          // Check if the file already exists in the backup directory
           const exists = await fileExistsInBackup(itemName, outputDir);
           if (exists) {
-            console.log(`Skipping existing file: ${itemName}`);
             skipped.push(itemName);
             continue; // Skip to the next file
           }
@@ -99,7 +106,16 @@ async function pullFilesRecursively(directory, outputDir) {
       }
     }
 
-    return { completed: true, message: "File pull successful", skipped }; // File pull successful
+    // Log the summary of skipped and total files
+    console.log(`Total files processed: ${totalFiles}`);
+    console.log(`Total files skipped: ${skipped.length}`);
+
+    return {
+      completed: true,
+      message: "File pull successful",
+      skipped,
+      totalFiles,
+    }; // File pull successful
   } catch (e) {
     if (e.message.includes("device unauthorized")) {
       return {
@@ -211,7 +227,7 @@ export async function deleteSources(backupOptions) {
 
 export async function backup(backupOptions, destinationPath) {
   const startTime = new Date(); // Capture the start time
-
+  let totalFiles = 0;
   const skipped = [];
   const client = Adb.createClient();
   const devices = await client.listDevices();
@@ -252,14 +268,15 @@ export async function backup(backupOptions, destinationPath) {
       fs.mkdirSync(outputDir, { recursive: true });
 
       const result = await pullFilesRecursively(src, outputDir);
+      totalFiles += result.totalFiles;
       skipped.push(...result.skipped);
-
       // Check for any errors from pulling files
       if (!result.completed) {
         return {
           completed: result.completed,
           message: result.message,
           skipped,
+          totalFiles,
         }; // Exit early if an error occurred
       }
     }
@@ -272,23 +289,20 @@ export async function backup(backupOptions, destinationPath) {
     // Convert milliseconds to seconds
     const timeDifferenceInSeconds = Math.ceil(timeDifference / 1000);
 
-    console.log(`Time taken: ${timeDifferenceInSeconds} seconds`);
-
     return {
       completed: true,
-      message:
-        "Successfully backed up files in " +
-        timeDifferenceInSeconds +
-        " second" +
-        (timeDifferenceInSeconds === 1 ? "" : "s") +
-        `<br /> Skipped ${skipped.length} files`,
+      message: `${timeDifferenceInSeconds}s${
+        timeDifferenceInSeconds === 1 ? "" : "s"
+      }<br /> Skipped ${skipped.length} files`,
       skipped,
+      totalFiles,
     };
   } catch (error) {
     return {
       completed: false,
-      message: "An error occurred during backup",
+      message: error.message,
       skipped,
+      totalFiles,
     };
   }
 }

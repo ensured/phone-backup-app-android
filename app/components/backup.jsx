@@ -39,9 +39,9 @@ const SkippedFilesDialog = ({ skipped }) => {
     <Dialog className="select-none pointer-events-none z-100">
       <DialogTrigger asChild>
         <Button variant="outline">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 text-muted-foreground/80 font-bold text-sm">
             <FileIcon className="size-4" />
-            View skipped file{skipped.length === 1 ? "" : "s"}
+            {skipped.length} skipped file{skipped.length === 1 ? "" : "s"}
           </div>
         </Button>
       </DialogTrigger>
@@ -49,7 +49,7 @@ const SkippedFilesDialog = ({ skipped }) => {
         <DialogHeader>
           <DialogTitle>
             <div>
-              <div>
+              <div className="text-lg">
                 {skipped.length} Skipped File
                 {skipped.length === 1 ? "" : "s"}
               </div>
@@ -196,51 +196,47 @@ export default function Backup({ success, deviceID }) {
 
   const startBackup = async () => {
     setBackupStarted(true);
-
-    // Save updated backup options to localStorage
     localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
 
-    // Get datetime
-    const options = {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    };
-
-    const startTime = new Date();
-
-    const { completed, message, skipped } = await backup(
+    const { completed, message, skipped, totalFiles } = await backup(
       backupOptions,
       backupOptions.destInputValue
     );
-
-    const formattedDate = new Date().toLocaleString("en-US", options);
 
     if (completed) {
       setBackupEnded(true);
       toast({
         title: (
-          <div className="grid grid-cols-1 gap-1">
+          <div className="grid grid-cols-1 col-span-1">
             {message.split("<br />").map((line, index) => (
-              <div key={index} className="text-sm text-muted-foreground">
-                - {line}
+              <div key={index}>
+                {index === 0 ? (
+                  <div className="flex flex-row my-1.5 gap-2 text-lg">
+                    <span className="text-green-500 font-bold">Success!</span>
+                    <span className="text-muted-foreground/80">
+                      {totalFiles - skipped.length} file
+                      {totalFiles - skipped.length === 1 ? "" : "s"} backed up
+                      in {line}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-row my-1.5">
+                    <SkippedFilesDialog
+                      skipped={skipped}
+                      totalFiles={totalFiles}
+                    />
+                  </div>
+                )}
               </div>
             ))}
-            <SkippedFilesDialog skipped={skipped} />
           </div>
         ),
         duration: 86400,
-        variant: "success",
       });
     } else {
       setBackupEnded(false);
       toast({
         title: message,
-        description: formattedDate,
         variant: "destructive",
       });
     }
@@ -463,7 +459,7 @@ export default function Backup({ success, deviceID }) {
                         }
                         onClick={handlePathsSelectClick}
                         ref={selectRef}
-                        className="border w-full border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary hover:cursor-pointer"
+                        className="border w-full border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 text-sm focus:ring-primary hover:cursor-pointer"
                         onChange={(e) => {
                           if (backupOptions.destInputValue.endsWith("\\")) {
                             backupOptions.destInputValue += e.target.value;
