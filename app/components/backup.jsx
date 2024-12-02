@@ -39,9 +39,9 @@ const SkippedFilesDialog = ({ skipped }) => {
     <Dialog className="select-none pointer-events-none z-100">
       <DialogTrigger asChild>
         <Button variant="outline">
-          <div className="flex items-center gap-2 text-muted-foreground/80 font-bold text-sm">
-            <FileIcon className="size-4" />
-            {skipped.length} skipped file{skipped.length === 1 ? "" : "s"}
+          <div className="flex items-center gap-2 font-bold text-base text-primary/80">
+            <FileIcon className="size-5" />
+            {skipped.length} skipped
           </div>
         </Button>
       </DialogTrigger>
@@ -56,8 +56,8 @@ const SkippedFilesDialog = ({ skipped }) => {
               <div>
                 {skipped.length > 100 && (
                   <span className="text-xs text-muted-foreground">
-                    Consider deleting some files to avoid skipping every time
-                    you backup.
+                    Consider deleting some files to avoid skipping so many files
+                    every time you backup.
                   </span>
                 )}
               </div>
@@ -105,7 +105,6 @@ export default function Backup({ success, deviceID }) {
   const handleRefreshDrives = async () => {
     setLoadingPaths(true);
     const drives = await getDrives();
-    console.log(drives);
     setDrives(drives);
     setLoadingPaths(false);
   };
@@ -213,7 +212,7 @@ export default function Backup({ success, deviceID }) {
                 {index === 0 ? (
                   <div className="flex flex-row my-1.5 gap-2 text-lg">
                     <span className="text-green-500 font-bold">Success!</span>
-                    <span className="text-muted-foreground/80">
+                    <span className="text-primary/80">
                       {totalFiles - skipped.length} file
                       {totalFiles - skipped.length === 1 ? "" : "s"} backed up
                       in {line}
@@ -358,7 +357,7 @@ export default function Backup({ success, deviceID }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 select-none">
+    <div className="flex flex-col items-center justify-center py-6 select-none">
       {!deviceId ? (
         <DeviceNotConnected />
       ) : (
