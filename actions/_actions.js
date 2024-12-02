@@ -225,6 +225,30 @@ export async function deleteSources(backupOptions) {
   };
 }
 
+const generateTimeAgo = (timeDifferenceInSeconds) => {
+  if (timeDifferenceInSeconds < 60) {
+    return `${timeDifferenceInSeconds}s`;
+  } else if (timeDifferenceInSeconds < 3600) {
+    const minutes = Math.floor(timeDifferenceInSeconds / 60);
+    return `${minutes}min`;
+  } else if (timeDifferenceInSeconds < 86400) {
+    const hours = Math.floor(timeDifferenceInSeconds / 3600);
+    return `${hours}h`;
+  } else if (timeDifferenceInSeconds < 604800) {
+    const days = Math.floor(timeDifferenceInSeconds / 86400);
+    return `${days}d`;
+  } else if (timeDifferenceInSeconds < 2592000) {
+    const weeks = Math.floor(timeDifferenceInSeconds / 604800);
+    return `${weeks}w`;
+  } else if (timeDifferenceInSeconds < 31536000) {
+    const months = Math.floor(timeDifferenceInSeconds / 2592000);
+    return `${months}m`;
+  } else {
+    const years = Math.floor(timeDifferenceInSeconds / 31536000);
+    return `${years}y`;
+  }
+};
+
 export async function backup(backupOptions, destinationPath) {
   const startTime = new Date(); // Capture the start time
   let totalFiles = 0;
@@ -288,10 +312,11 @@ export async function backup(backupOptions, destinationPath) {
 
     // Convert milliseconds to seconds
     const timeDifferenceInSeconds = Math.ceil(timeDifference / 1000);
+    const timeAgo = generateTimeAgo(timeDifferenceInSeconds);
 
     return {
       completed: true,
-      message: `${timeDifferenceInSeconds}s${
+      message: `${timeAgo}s${
         timeDifferenceInSeconds === 1 ? "" : "s"
       }<br /> Skipped ${skipped.length} files`,
       skipped,
