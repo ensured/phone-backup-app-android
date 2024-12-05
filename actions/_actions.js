@@ -316,7 +316,7 @@ export async function backup(backupOptions, destinationPath) {
 
     return {
       completed: true,
-      message: `${timeAgo}s${
+      message: `${timeAgo}${
         timeDifferenceInSeconds === 1 ? "" : "s"
       }<br /> Skipped ${skipped.length} files`,
       skipped,
