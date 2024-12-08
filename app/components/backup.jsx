@@ -51,7 +51,7 @@ const SkippedFilesDialog = ({ skipped }) => {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] pointer-events-none select-none">
         <DialogDescription></DialogDescription>
-        <DialogHeader>
+        <DialogHeader className="overflow-hidden h-[50vh]">
           <DialogTitle>
             <div className="flex flex-col gap-2 text-center w-full font-bold text-primary/80 p-4">
               Skipped
@@ -69,18 +69,20 @@ const SkippedFilesDialog = ({ skipped }) => {
           </DialogTitle>
           <div className="flex flex-col max-h-[50vh] overflow-y-auto border border-border rounded-md">
             <div className="rounded-md p-2 mr-2 flex flex-col gap-1 bg-secondary/20">
-              <div className="text-lg font-bold flex gap-2 items-center justify-center">
+              <div className="text-xl font-bold flex gap-2 items-center justify-center">
                 <FileIcon className="size-4" />
                 Files
               </div>
-              {files.map((file) => (
-                <div
-                  key={file}
-                  className="flex flex-row gap-2 p-2 border rounded-md shadow-sm select-none"
-                >
-                  {file}
-                </div>
-              ))}
+              <div className="grid grid-cols-2 gap-2">
+                {files.map((file) => (
+                  <div
+                    key={file}
+                    className="p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
+                  >
+                    {file}
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="rounded-md p-2 mr-2 flex flex-col gap-1 bg-secondary/20">
               <div className="text-lg font-bold flex gap-2 items-center justify-center">
@@ -562,7 +564,7 @@ export default function Backup({ success, deviceID }) {
                   startBackup={startBackup}
                 />
               </div>
-              {backupEnded && <Confetti />}
+              {backupEnded && <ConfettiExplosion />}
             </form>
           </CardContent>
         </Card>

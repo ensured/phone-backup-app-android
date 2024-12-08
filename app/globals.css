@@ -83,13 +83,15 @@ body {
   }
 }
 
-/* modify the scroll bar */
+/* General scrollbar styles */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 2px; /* Width of the vertical scrollbar */
+  height: 2px; /* Height of the horizontal scrollbar */
   border-radius: 10px;
   background-color: #c0ffee50;
 }
 
 ::-webkit-scrollbar-thumb {
   background-color: #c0ffee;
+  border-radius: 10px; /* Optional: if you want rounded thumbs */
 }
