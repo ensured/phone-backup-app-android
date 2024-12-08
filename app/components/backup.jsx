@@ -43,11 +43,13 @@ const SkippedFilesDialog = ({ skipped }) => {
   return (
     <Dialog className="select-none pointer-events-none z-100">
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <div className="flex items-center gap-2 font-bold text-base text-primary/80">
-            {skipped.length} skipped
-          </div>
-        </Button>
+        {skipped.length > 0 && (
+          <Button variant="outline">
+            <div className="flex items-center gap-2 font-bold text-base text-primary/80">
+              {skipped.length} skipped
+            </div>
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] pointer-events-none select-none">
         <DialogDescription></DialogDescription>
@@ -56,50 +58,61 @@ const SkippedFilesDialog = ({ skipped }) => {
             <div className="flex flex-col gap-2 text-center w-full font-bold text-primary/80 p-4">
               Skipped
               <div className="flex flex-row gap-2 items-center justify-center">
-                <div className="text-primary/80 flex flex-row gap-1 items-centerrounded-md p-1">
-                  <FileIcon className="size-4" />
-                  {files.length} File{files.length === 1 ? "" : "s"}
-                </div>
-                <div className="text-primary/80 flex flex-row gap-1 items-center">
-                  <FolderIcon className="size-4" />
-                  {folders.length} Folder{folders.length === 1 ? "" : "s"}
-                </div>
+                {files.length > 0 && (
+                  <div className="text-primary/80 flex flex-row gap-1 items-centerrounded-md p-1">
+                    <FileIcon className="size-4" />
+                    {files.length} File{files.length === 1 ? "" : "s"}
+                  </div>
+                )}
+                {folders.length > 0 && (
+                  <div className="text-primary/80 flex flex-row gap-1 items-center">
+                    <FolderIcon className="size-4" />
+                    {folders.length} Folder{folders.length === 1 ? "" : "s"}
+                  </div>
+                )}
               </div>
             </div>
           </DialogTitle>
           <div className="flex flex-col max-h-[50vh] overflow-y-auto border border-border rounded-md">
-            <div className="rounded-md p-2 mr-2 flex flex-col gap-1 bg-secondary/20">
-              <div className="text-xl font-bold flex gap-2 items-center justify-center">
-                <FileIcon className="size-4" />
-                Files
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {files.map((file) => (
-                  <div
-                    key={file}
-                    className="p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
-                  >
-                    {file}
+            {files.length > 0 && (
+              <div className="rounded-md p-2 mr-2 flex flex-col gap-1 bg-secondary/20">
+                {files.length > 0 && (
+                  <div className="text-lg font-bold flex gap-2 items-center justify-center">
+                    <FileIcon className="size-4" />
+                    Files
                   </div>
-                ))}
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {files.map((file) => (
+                    <div
+                      key={file}
+                      className="p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
+                    >
+                      {file}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="rounded-md p-2 mr-2 flex flex-col gap-1 bg-secondary/20">
-              <div className="text-lg font-bold flex gap-2 items-center justify-center">
-                <FolderIcon className="size-4" />
-                Folders
+            )}
+
+            {folders.length > 0 && (
+              <div className="rounded-md p-2 mr-2 flex flex-col gap-1 bg-secondary/20">
+                <div className="text-lg font-bold flex gap-2 items-center justify-center">
+                  <FolderIcon className="size-4" />
+                  Folders
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {folders.map((folder) => (
+                    <div
+                      key={folder}
+                      className="p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
+                    >
+                      {folder}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {folders.map((folder) => (
-                  <div
-                    key={folder}
-                    className="p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
-                  >
-                    {folder}
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         </DialogHeader>
       </DialogContent>
@@ -224,19 +237,14 @@ export default function Backup({ success, deviceID }) {
     setBackupStarted(true);
     localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
 
-    const { completed, message, skipped, totalFiles } = await backup(
-      backupOptions,
-      backupOptions.destInputValue
-    );
+    const { completed, message, skipped, totalFiles, totalFolders } =
+      await backup(backupOptions, backupOptions.destInputValue);
 
     if (completed) {
       setBackupEnded(true);
-      const { dismiss } = toast({
+      toast({
         title: (
-          <div
-            className="grid grid-cols-1 col-span-1"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="grid grid-cols-1 col-span-1">
             {message.split("<br />").map((line, index) => (
               <div key={index}>
                 {index === 0 ? (
@@ -250,7 +258,11 @@ export default function Backup({ success, deviceID }) {
                   </div>
                 ) : (
                   <div className="flex flex-row my-1.5">
-                    <SkippedFilesDialog skipped={skipped} />
+                    <SkippedFilesDialog
+                      skipped={skipped}
+                      totalFiles={totalFiles}
+                      totalFolders={totalFolders}
+                    />
                   </div>
                 )}
               </div>
@@ -258,23 +270,15 @@ export default function Backup({ success, deviceID }) {
           </div>
         ),
         duration: 86400,
-        className: "cursor-pointer",
-        onClick: () => dismiss(),
       });
-
-      const handleGlobalClick = () => dismiss();
-      document.addEventListener("click", handleGlobalClick);
-
-      setBackupStarted(false);
-      return () => document.removeEventListener("click", handleGlobalClick);
     } else {
       setBackupEnded(false);
       toast({
         title: message,
         variant: "destructive",
       });
-      setBackupStarted(false);
     }
+    setBackupStarted(false);
   };
 
   const handleDestInputChange = (event) => {
@@ -559,17 +563,10 @@ export default function Backup({ success, deviceID }) {
                 </div>
               ) : (
                 // Skeletons when backup are in progress
-                <div className="grid grid-cols-6 gap-x-1.5 gap-y-4">
-                  <div className="col-span-2">
-                    <Skeleton className="w-full h-[120.56px] rounded-md" />
-                  </div>
-                  <div className="col-span-4">
-                    <Skeleton className="w-full h-[120.56px] rounded-md" />
-                  </div>
-                  <div className="col-span-6 space-y-1">
-                    <Skeleton className="w-full h-9" />
-                    <Skeleton className="w-full h-9" />
-                  </div>
+                <div className="flex flex-col gap-4 mb-4">
+                  <Skeleton className="w-full h-8 rounded-md" />
+                  <Skeleton className="w-full h-8 rounded-md" />
+                  <Skeleton className="w-full h-8 rounded-md" />
                 </div>
               )}
 
