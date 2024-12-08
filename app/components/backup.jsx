@@ -89,14 +89,16 @@ const SkippedFilesDialog = ({ skipped }) => {
                 <FolderIcon className="size-4" />
                 Folders
               </div>
-              {folders.map((folder) => (
-                <div
-                  key={folder}
-                  className="p-2 border rounded-md shadow-sm select-none "
-                >
-                  {folder}
-                </div>
-              ))}
+              <div className="grid grid-cols-2 gap-2">
+                {folders.map((folder) => (
+                  <div
+                    key={folder}
+                    className="p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
+                  >
+                    {folder}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </DialogHeader>
