@@ -224,32 +224,33 @@ export default function Backup({ success, deviceID }) {
     setBackupStarted(true);
     localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
 
-    const { completed, message, skipped, totalFiles, totalFolders } =
-      await backup(backupOptions, backupOptions.destInputValue);
+    const { completed, message, skipped, totalFiles } = await backup(
+      backupOptions,
+      backupOptions.destInputValue
+    );
 
     if (completed) {
       setBackupEnded(true);
-      toast({
+      const { dismiss } = toast({
         title: (
-          <div className="grid grid-cols-1 col-span-1">
+          <div
+            className="grid grid-cols-1 col-span-1"
+            onClick={(e) => e.stopPropagation()}
+          >
             {message.split("<br />").map((line, index) => (
               <div key={index}>
                 {index === 0 ? (
                   <div className="flex flex-row my-1.5 gap-2 text-lg">
                     <span className="text-green-500 font-bold">Success!</span>
                     <span className="text-primary/80">
-                      {totalFiles - skipped.length} file
+                      {totalFiles} file
                       {totalFiles - skipped.length === 1 ? "" : "s"} backed up
                       in {line}
                     </span>
                   </div>
                 ) : (
                   <div className="flex flex-row my-1.5">
-                    <SkippedFilesDialog
-                      skipped={skipped}
-                      totalFiles={totalFiles}
-                      totalFolders={totalFolders}
-                    />
+                    <SkippedFilesDialog skipped={skipped} />
                   </div>
                 )}
               </div>
@@ -257,15 +258,23 @@ export default function Backup({ success, deviceID }) {
           </div>
         ),
         duration: 86400,
+        className: "cursor-pointer",
+        onClick: () => dismiss(),
       });
+
+      const handleGlobalClick = () => dismiss();
+      document.addEventListener("click", handleGlobalClick);
+
+      setBackupStarted(false);
+      return () => document.removeEventListener("click", handleGlobalClick);
     } else {
       setBackupEnded(false);
       toast({
         title: message,
         variant: "destructive",
       });
+      setBackupStarted(false);
     }
-    setBackupStarted(false);
   };
 
   const handleDestInputChange = (event) => {
@@ -550,10 +559,17 @@ export default function Backup({ success, deviceID }) {
                 </div>
               ) : (
                 // Skeletons when backup are in progress
-                <div className="flex flex-col gap-4 mb-4">
-                  <Skeleton className="w-full h-8 rounded-md" />
-                  <Skeleton className="w-full h-8 rounded-md" />
-                  <Skeleton className="w-full h-8 rounded-md" />
+                <div className="grid grid-cols-6 gap-x-1.5 gap-y-4">
+                  <div className="col-span-2">
+                    <Skeleton className="w-full h-[120.56px] rounded-md" />
+                  </div>
+                  <div className="col-span-4">
+                    <Skeleton className="w-full h-[120.56px] rounded-md" />
+                  </div>
+                  <div className="col-span-6 space-y-1">
+                    <Skeleton className="w-full h-9" />
+                    <Skeleton className="w-full h-9" />
+                  </div>
                 </div>
               )}
 

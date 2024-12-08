@@ -1,7 +1,7 @@
-import { CheckIcon, XIcon } from "lucide-react";
+import { CheckIcon, XIcon, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-
+import { Skeleton } from "@/components/ui/skeleton";
 const CardFooterBackupAndStatus = ({
   deviceId,
   backupOptions,
@@ -37,10 +37,16 @@ const CardFooterBackupAndStatus = ({
         }}
         className="relative rounded-e-none text-md px-7 w-36 select-none"
       >
-        {backupStarted ? "Backing up..." : "Backup"}
+        {backupStarted ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          "Backup"
+        )}
       </Button>
-      <div className="ml-3 flex justify-center select-none">
-        {deviceId ? (
+      <div className="mx-2 flex justify-center select-none w-full">
+        {backupStarted ? (
+          <Skeleton className="h-6 w-full" />
+        ) : deviceId ? (
           <div className="text-md flex gap-1 items-center">
             {deviceId} connected <CheckIcon />
           </div>

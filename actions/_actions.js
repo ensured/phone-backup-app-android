@@ -71,14 +71,14 @@ async function pullFilesRecursively(directory, outputDir) {
       const isDirectory = itemName.endsWith("/");
 
       if (!isDirectory) {
-        totalFiles++;
+
         try {
           const exists = await fileExistsInBackup(itemName, outputDir);
           if (exists) {
             skipped.push(itemName);
             continue;
           }
-
+          totalFiles++;
           // Use double quotes around paths and ensure proper path format
           const command = `adb pull "${escapedDirectory}/${itemName}" "${normalizedOutputDir}"`;
           execSync(command);
