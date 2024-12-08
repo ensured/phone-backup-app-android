@@ -95,3 +95,8 @@ body {
   background-color: #c0ffee;
   border-radius: 10px; /* Optional: if you want rounded thumbs */
 }
+
+.blur-effect {
+  filter: blur(4px);
+  pointer-events: none;
+}

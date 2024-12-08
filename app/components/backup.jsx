@@ -136,6 +136,7 @@ export default function Backup({ success, deviceID }) {
     Pictures: true,
     destInputValue: "",
   });
+  const [isToastVisible, setIsToastVisible] = useState(false);
 
   const selectRef = useRef(null); // Create a ref for the select element
   const inputRef = useRef(null);
@@ -242,35 +243,32 @@ export default function Backup({ success, deviceID }) {
 
     if (completed) {
       setBackupEnded(true);
-      toast({
-        title: (
-          <div className="grid grid-cols-1 col-span-1">
-            {message.split("<br />").map((line, index) => (
-              <div key={index}>
-                {index === 0 ? (
-                  <div className="flex flex-row my-1.5 gap-2 text-lg">
-                    <span className="text-green-500 font-bold">Success!</span>
-                    <span className="text-primary/80">
-                      {totalFiles} file
-                      {totalFiles - skipped.length === 1 ? "" : "s"} backed up
-                      in {line}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex flex-row my-1.5">
-                    <SkippedFilesDialog
-                      skipped={skipped}
-                      totalFiles={totalFiles}
-                      totalFolders={totalFolders}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ),
-        duration: 86400,
-      });
+      showToast(
+        <div onClick={(e) => e.stopPropagation()}>
+          {message.split("<br />").map((line, index) => (
+            <div key={index}>
+              {index === 0 ? (
+                <div className="flex flex-row my-1.5 gap-2 text-lg">
+                  <span className="text-green-500 font-bold">Success!</span>
+                  <span className="text-primary/80">
+                    {totalFiles} file
+                    {totalFiles - skipped.length === 1 ? "" : "s"} backed up in{" "}
+                    {line}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-row my-1.5">
+                  <SkippedFilesDialog
+                    skipped={skipped}
+                    totalFiles={totalFiles}
+                    totalFolders={totalFolders}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
     } else {
       setBackupEnded(false);
       toast({
@@ -395,8 +393,57 @@ export default function Backup({ success, deviceID }) {
     setLoadingSelectPaths(false);
   };
 
+  const showToast = (content) => {
+    if (!isToastVisible) {
+      setIsToastVisible(true);
+      toast({
+        title: content,
+        onClose: () => {
+          setIsToastVisible(false);
+        },
+        duration: null,
+        onClick: () => {
+          setIsToastVisible(false);
+        },
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      // Check if the click is outside the toast
+      const toastElements = document.querySelectorAll('[role="status"]');
+      let clickedInsideToast = false;
+
+      toastElements.forEach((toast) => {
+        if (toast.contains(event.target)) {
+          clickedInsideToast = true;
+        }
+      });
+
+      if (!clickedInsideToast && isToastVisible) {
+        setIsToastVisible(false);
+        // Find and dismiss all toasts
+        const closeButtons = document.querySelectorAll("[toast-close]");
+        closeButtons.forEach((button) => button.click());
+      }
+    };
+
+    if (isToastVisible) {
+      document.addEventListener("click", handleOutsideClick);
+    }
+
+    return () => {
+      document.removeEventListener("click", handleOutsideClick);
+    };
+  }, [isToastVisible]);
+
   return (
-    <div className="flex flex-col items-center justify-center py-6 select-none">
+    <div
+      className={`flex flex-col items-center justify-center py-6 select-none ${
+        isToastVisible ? "blur-effect" : ""
+      }`}
+    >
       {!deviceId ? (
         <DeviceNotConnected />
       ) : (
