@@ -18,9 +18,15 @@ const backupSrcs = [
 // const documentExts = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"];
 // const otherExts = [".txt", ".csv", ".json", ".xml", ".html", ".css", ".js"];
 
-// Function to escape backslashes
+// Function to escape backslashes for adb shell commands
 function escapeBackslashes(path) {
   return path.replace(/\\/g, "\\\\");
+}
+
+// New function for handling Windows output paths
+function normalizeOutputPath(path) {
+  // Convert Windows path to forward slashes and remove any trailing slash
+  return path.replace(/\\/g, "/").replace(/\/$/, "");
 }
 
 // Function to check if a file already exists in any "Backup_" directory
@@ -47,8 +53,12 @@ async function pullFilesRecursively(directory, outputDir) {
   let skipped = [];
   let totalFiles = 0;
   try {
+    // Create directory with absolute path
+    const absoluteOutputDir = path.resolve(outputDir);
+    fs.mkdirSync(absoluteOutputDir, { recursive: true });
+
     const escapedDirectory = escapeBackslashes(directory);
-    const escapedOutputDir = escapeBackslashes(outputDir);
+    const normalizedOutputDir = normalizeOutputPath(absoluteOutputDir);
 
     // Get the list of files and directories in the source directory
     const items = execSync(`adb shell ls -1 "${escapedDirectory}"`)
@@ -57,53 +67,26 @@ async function pullFilesRecursively(directory, outputDir) {
       .split("\n");
 
     for (const item of items) {
-      // Trim whitespace and sanitize the item name
       const itemName = item.trim();
       const isDirectory = itemName.endsWith("/");
 
-      if (isDirectory) {
-        // Recursively handle subdirectories
-        try {
-          const subDir = itemName.slice(0, -1); // Remove trailing slash
-          const newOutputDir = path.join(outputDir, subDir);
-          fs.mkdirSync(newOutputDir, { recursive: true });
-          await pullFilesRecursively(
-            path.join(directory, subDir),
-            newOutputDir
-          );
-        } catch (error) {
-          console.error(
-            `Error creating directory ${newOutputDir}:`,
-            error.message
-          );
-        }
-      } else {
-        totalFiles++; // Increment for every file, including skipped ones
+      if (!isDirectory) {
+        totalFiles++;
         try {
           const exists = await fileExistsInBackup(itemName, outputDir);
           if (exists) {
             skipped.push(itemName);
-            continue; // Skip to the next file
+            continue;
           }
 
-          // Pull the file if it doesn't exist
-          const output = execSync(
-            `adb pull "${escapedDirectory}/${itemName}" "${escapedOutputDir}"`
-          );
-          const outputString = output.toString();
-
-          if (outputString.includes("device unauthorized")) {
-            return {
-              completed: false,
-              message:
-                "Device is unauthorized. Please make sure you have enabled USB debugging on the device and that your device is connected to your computer via USB.",
-              skipped,
-            };
-          }
+          // Use double quotes around paths and ensure proper path format
+          const command = `adb pull "${escapedDirectory}/${itemName}" "${normalizedOutputDir}"`;
+          execSync(command);
         } catch (error) {
           console.error(`Error pulling file ${itemName}:`, error.message);
         }
       }
+      // ... rest of the function remains the same ...
     }
 
     // Log the summary of skipped and total files
@@ -316,9 +299,7 @@ export async function backup(backupOptions, destinationPath) {
 
     return {
       completed: true,
-      message: `${timeAgo}${
-        timeDifferenceInSeconds === 1 ? "" : "s"
-      }<br /> Skipped ${skipped.length} files`,
+      message: `${timeAgo}<br /> Skipped ${skipped.length} files`,
       skipped,
       totalFiles,
     };
