@@ -610,7 +610,10 @@ export default function Backup({ success, deviceID }) {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <Skeleton className="w-full h-[120.56px] rounded-md" />
+                  <div className="grid grid-cols-6 gap-x-1.5 gap-y-4">
+                    <Skeleton className="col-span-2 h-[120.56px] rounded-md" />
+                    <Skeleton className="col-span-4 h-[120.56px] rounded-md" />
+                  </div>
                   <div className="flex flex-col gap-1 mt-2">
                     <Skeleton className="w-full h-9 rounded-md" />
                     <Skeleton className="w-full h-9 rounded-md" />
