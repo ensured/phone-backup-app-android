@@ -46,7 +46,7 @@ const SkippedFilesDialog = ({ skipped }) => {
         {skipped.length > 0 && (
           <Button variant="outline">
             <div className="flex items-center gap-2 font-bold text-base text-primary/80">
-              {skipped.length} skipped
+              View {skipped.length} skipped
             </div>
           </Button>
         )}
@@ -86,7 +86,7 @@ const SkippedFilesDialog = ({ skipped }) => {
                   {files.map((file) => (
                     <div
                       key={file}
-                      className="p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
+                      className="text-xs p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
                     >
                       {file}
                     </div>
@@ -251,8 +251,17 @@ export default function Backup({ success, deviceID }) {
                 <div className="flex flex-row my-1.5 gap-2 text-lg">
                   <span className="text-green-500 font-bold">Success!</span>
                   <span className="text-primary/80">
-                    {totalFiles} file
-                    {totalFiles - skipped.length === 1 ? "" : "s"} backed up in{" "}
+                    {totalFiles === 0 ? "" : totalFiles + ` file`}
+                    {totalFiles === 0
+                      ? " "
+                      : totalFiles - skipped.length === 1
+                      ? " "
+                      : "s"}
+                    {totalFiles === 0
+                      ? `Skipped ${skipped.length} file${
+                          skipped.length === 1 ? "" : "s"
+                        } in `
+                      : " backed up in "}
                     {line}
                   </span>
                 </div>

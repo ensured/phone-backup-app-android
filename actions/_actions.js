@@ -71,7 +71,6 @@ async function pullFilesRecursively(directory, outputDir) {
       const isDirectory = itemName.endsWith("/");
 
       if (!isDirectory) {
-
         try {
           const exists = await fileExistsInBackup(itemName, outputDir);
           if (exists) {
@@ -86,7 +85,6 @@ async function pullFilesRecursively(directory, outputDir) {
           console.error(`Error pulling file ${itemName}:`, error.message);
         }
       }
-      // ... rest of the function remains the same ...
     }
 
     // Log the summary of skipped and total files
@@ -270,13 +268,21 @@ export async function backup(backupOptions, destinationPath) {
       (location) => backupOptions[location.key]
     )) {
       const { src, dest } = location;
-      const outputDir = `${destPathWindows}Backup_${dest}_${generateDate()}\\`;
+      // check year folder exists
+      const yearFolder = `${destPathWindows}${generateDate()}\\`;
+      if (!fs.existsSync(yearFolder)) {
+        fs.mkdirSync(yearFolder, { recursive: true });
+      }
+
+      const outputDir = `${yearFolder}${dest}\\`;
 
       fs.mkdirSync(outputDir, { recursive: true });
 
       const result = await pullFilesRecursively(src, outputDir);
       totalFiles += result.totalFiles;
-      skipped.push(...result.skipped);
+      if (result.skipped) {
+        skipped.push(...result.skipped);
+      }
       // Check for any errors from pulling files
       if (!result.completed) {
         return {
