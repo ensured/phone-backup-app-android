@@ -138,6 +138,10 @@ export default function Backup({ success, deviceID }) {
   });
   const [isToastVisible, setIsToastVisible] = useState(false);
 
+  const [output, setOutput] = useState("");
+  const [outputVisible, setOutputVisible] = useState(false);
+  const outputRef = useRef(null);
+
   const selectRef = useRef(null); // Create a ref for the select element
   const inputRef = useRef(null);
 
@@ -236,56 +240,86 @@ export default function Backup({ success, deviceID }) {
 
   const startBackup = async () => {
     setBackupStarted(true);
+    setOutput(""); // Clear previous output
     localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
 
-    const { completed, message, skipped, totalFiles, totalFolders } =
-      await backup(backupOptions, backupOptions.destInputValue);
+    const eventSource = new EventSource(
+      `/api/backupStream?options=${encodeURIComponent(
+        JSON.stringify(backupOptions)
+      )}`
+    );
 
-    if (completed) {
-      setBackupEnded(true);
-      showToast(
-        <div onClick={(e) => e.stopPropagation()}>
-          {message.split("<br />").map((line, index) => (
-            <div key={index}>
-              {index === 0 ? (
-                <div className="flex flex-row my-1.5 gap-2 text-lg">
-                  <span className="text-green-500 font-bold">Success!</span>
-                  <span className="text-primary/80">
-                    {totalFiles === 0 ? "" : totalFiles + ` file`}
-                    {totalFiles === 0
-                      ? " "
-                      : totalFiles - skipped.length === 1
-                      ? " "
-                      : "s"}
-                    {totalFiles === 0
-                      ? `Skipped ${skipped.length} file${
-                          skipped.length === 1 ? "" : "s"
-                        } in `
-                      : " backed up in "}
-                    {line}
-                  </span>
-                </div>
-              ) : (
-                <div className="flex flex-row my-1.5">
-                  <SkippedFilesDialog
-                    skipped={skipped}
-                    totalFiles={totalFiles}
-                    totalFolders={totalFolders}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      );
-    } else {
-      setBackupEnded(false);
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.status === "log") {
+        setOutput((prev) => {
+          const newOutput = prev + data.message + "\n";
+          // Scroll to bottom after state update
+          setTimeout(() => {
+            if (outputRef.current) {
+              outputRef.current.scrollTop = outputRef.current.scrollHeight;
+            }
+          }, 0);
+          return newOutput;
+        });
+      } else if (data.status === "complete") {
+        setBackupEnded(true);
+        showToast(
+          <div onClick={(e) => e.stopPropagation()}>
+            {data.message.split("<br />").map((line, index) => (
+              <div key={index}>
+                {index === 0 ? (
+                  <div className="flex flex-row my-1.5 gap-2 text-lg">
+                    <span className="text-green-500 font-bold">Success!</span>
+                    <span className="text-primary/80">
+                      {data.totalFiles === 0 ? "" : data.totalFiles + ` file`}
+                      {data.totalFiles === 0
+                        ? " "
+                        : data.totalFiles - data.skipped.length === 1
+                        ? " "
+                        : "s"}
+                      {data.totalFiles === 0
+                        ? `Skipped ${data.skipped.length} file${
+                            data.skipped.length === 1 ? "" : "s"
+                          } in `
+                        : " backed up in "}
+                      {line}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-row my-1.5">
+                    <SkippedFilesDialog
+                      skipped={data.skipped}
+                      totalFiles={data.totalFiles}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+        eventSource.close();
+        setBackupStarted(false);
+      } else if (data.status === "error") {
+        toast({
+          title: data.message,
+          variant: "destructive",
+        });
+        eventSource.close();
+        setBackupStarted(false);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("EventSource error:", error);
+      eventSource.close();
+      setBackupStarted(false);
       toast({
-        title: message,
+        title: "Backup failed",
         variant: "destructive",
       });
-    }
-    setBackupStarted(false);
+    };
   };
 
   const handleDestInputChange = (event) => {
@@ -644,6 +678,14 @@ export default function Backup({ success, deviceID }) {
           </CardContent>
         </Card>
       )}
+
+      {/* output streamed content */}
+      <textarea
+        ref={outputRef}
+        className="mt-6 resize-none h-96 w-[85%] bg-secondary/30 rounded-md p-2 focus:outline-none focus:ring-2"
+        value={output.trim()}
+        readOnly
+      />
     </div>
   );
 }
