@@ -401,7 +401,7 @@ export default function Backup({ success, deviceID }) {
         onClose: () => {
           setIsToastVisible(false);
         },
-        duration: null,
+        duration: 69000,
         onClick: () => {
           setIsToastVisible(false);
         },
@@ -609,11 +609,12 @@ export default function Backup({ success, deviceID }) {
                   </div>
                 </div>
               ) : (
-                // Skeletons when backup are in progress
-                <div className="flex flex-col gap-4 mb-4">
-                  <Skeleton className="w-full h-8 rounded-md" />
-                  <Skeleton className="w-full h-8 rounded-md" />
-                  <Skeleton className="w-full h-8 rounded-md" />
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="w-full h-[120.56px] rounded-md" />
+                  <div className="flex flex-col gap-1 mt-2">
+                    <Skeleton className="w-full h-9 rounded-md" />
+                    <Skeleton className="w-full h-9 rounded-md" />
+                  </div>
                 </div>
               )}
 
