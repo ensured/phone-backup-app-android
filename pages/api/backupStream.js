@@ -73,13 +73,15 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
   let completedFiles = 0;
 
   try {
-    sendSSE({
-      status: "log",
-      message: `📁 Creating directory: ${outputDir}`,
-    });
-
     const absoluteOutputDir = path.resolve(outputDir);
-    fs.mkdirSync(absoluteOutputDir, { recursive: true });
+
+    if (!fs.existsSync(absoluteOutputDir)) {
+      sendSSE({
+        status: "log",
+        message: `📁 Creating directory: ${outputDir}`,
+      });
+      fs.mkdirSync(absoluteOutputDir, { recursive: true });
+    }
 
     const escapedDirectory = escapeBackslashes(directory);
     const normalizedOutputDir = normalizeOutputPath(absoluteOutputDir);
@@ -237,6 +239,10 @@ async function backup(sendSSE, backupOptions, destinationPath) {
       const yearFolder = `${destPathWindows}${generateDate()}\\`;
       if (!fs.existsSync(yearFolder)) {
         fs.mkdirSync(yearFolder, { recursive: true });
+        sendSSE({
+          status: "log",
+          message: `📁 Creating Year directory: ${yearFolder}`,
+        });
       }
 
       const outputDir = `${yearFolder}${dest}\\`;
@@ -261,14 +267,12 @@ async function backup(sendSSE, backupOptions, destinationPath) {
     const timeDifferenceInSeconds = Math.ceil((endTime - startTime) / 1000);
     const timeAgo = generateTimeAgo(timeDifferenceInSeconds);
 
-    const summaryMessage = `✅ Backup Complete|||⏱️ Time taken: ${timeAgo}|||📁 Total files: ${
+    const summaryMessage = `✅ Backup Complete|||⏱️ Time: ${timeAgo}|||📁 Files: ${
       totalStats.files
-    }|||⏭️ Total skipped: ${
+    }|||⏭️ Skipped: ${
       totalStats.skipped.length
     }|||📂 By Location:${totalStats.results
-      .map(
-        (r) => `\n   • ${r.location}: ${r.files} files (${r.skipped} skipped)`
-      )
+      .map((r) => `\n• ${r.location}: ${r.files} files (${r.skipped} skipped)`)
       .join("")}`;
 
     return {

@@ -269,21 +269,92 @@ export default function Backup({ success, deviceID }) {
         });
       } else if (data.status === "complete") {
         setBackupEnded(true);
-        const messages = data.message.split("|||");
+        const messages = data.message.split("•");
         setProgress((prev) => ({
           ...prev,
           skipped: data.skipped || [],
         }));
         showToast(
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="flex flex-col gap-2"
-          >
-            {messages.map((message, index) => (
-              <div key={index} className="text-lg font-bold">
-                {message}
-              </div>
-            ))}
+          <div className="grid grid-cols-1 gap-1 place-items-center ">
+            {messages.map((message, index) => {
+              if (message.includes("|||")) {
+                // Split and format the completion summary
+                return message.split("|||").map((msg, subIndex) => {
+                  // For time taken and total files, create a side-by-side layout
+                  if (subIndex === 1 || subIndex === 2) {
+                    return subIndex % 2 === 1 ? (
+                      <div
+                        key={`${index}-${subIndex}`}
+                        className="grid grid-cols-2 gap-4 py-1 text-muted-foreground"
+                      >
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <span className="text-lg">{msg.slice(0, 2)}</span>
+                          <span className="text-lg">{msg.slice(2)}</span>
+                        </div>
+                        {/* Render the next item inline */}
+                        <div className="flex items-center gap-2 text-lg text-muted-foreground">
+                          <span>
+                            {messages[index]
+                              .split("|||")
+                              [subIndex + 1].slice(0, 2)}
+                          </span>
+                          <span>
+                            {messages[index]
+                              .split("|||")
+                              [subIndex + 1].slice(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null;
+                  }
+
+                  // Main completion message and skipped count
+                  return subIndex === 0 || subIndex === 3 ? (
+                    <div
+                      key={`${index}-${subIndex}`}
+                      className={`pb-2 flex items-center gap-2 text-muted-foreground ${
+                        subIndex === 0 ? "text-lg border-b" : "text-lg"
+                      }`}
+                    >
+                      <span className="text-lg">{msg.slice(0, 2)}</span>
+                      <span className="text-lg">{msg.slice(2)}</span>
+                    </div>
+                  ) : null;
+                });
+              }
+
+              // Handle location summaries (lines starting with •)
+              if (message.startsWith("•")) {
+                const locationInfo = message.slice(2).split(":");
+                return (
+                  <div key={index} className="flex items-center gap-2 ">
+                    <div className="flex items-center gap-2">
+                      <span>•</span>
+                      <span className="font-medium text-lg">
+                        {locationInfo[0]}
+                      </span>
+                      <span className="text-muted-foreground text-lg">
+                        {locationInfo[1]}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Default message format
+              return (
+                <div
+                  key={index}
+                  className="font-medium text-lg text-muted-foreground"
+                >
+                  {index === 1 ? (
+                    <span className="border-t pt-2 ">{message}</span>
+                  ) : (
+                    <span>{message}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
         eventSource.close();
@@ -435,6 +506,7 @@ export default function Backup({ success, deviceID }) {
         onClose: () => {
           setIsToastVisible(false);
         },
+        className: "w-full grid grid-cols-1 col-span-1",
         duration: 69000,
         onClick: () => {
           setIsToastVisible(false);
@@ -678,7 +750,7 @@ export default function Backup({ success, deviceID }) {
       <div className="mt-2 sm:w-[85%] w-[92%] max-w-[64rem] mx-auto bg-secondary/30 rounded-md relative">
         {backupStarted && (
           <div className="absolute top-0 left-0 w-full">
-            <div className="flex justify-center text-sm text-muted-foreground">
+            <div className="flex justify-center text-muted-foreground">
               <span>
                 Progress: {progress.completed} / {progress.total} files{" "}
                 <b>{progress.percentage}%</b>
@@ -692,19 +764,16 @@ export default function Backup({ success, deviceID }) {
             </div>
           </div>
         )}
-
-        <textarea
-          ref={outputRef}
-          className={`${
-            backupStarted ? "mt-[40px]" : ""
-          } h-72 max-w-[64rem] w-full resize-none bg-transparent focus:outline-none flex flex-col gap-2 mx-auto`}
-          value={output.trim()}
-          readOnly
-        />
-
-        <div className="absolute bottom-2 right-2">
-          <SkippedFilesDialog skipped={progress.skipped || []} />
-        </div>
+        {output.trim().length > 0 && (
+          <textarea
+            ref={outputRef}
+            className={`${
+              backupStarted ? "mt-[40px]" : ""
+            } h-72 max-w-[64rem] w-full resize-none bg-transparent focus:outline-none flex flex-col gap-2 mx-auto`}
+            value={output.trim()}
+            readOnly
+          />
+        )}
       </div>
     </div>
   );
