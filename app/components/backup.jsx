@@ -147,6 +147,13 @@ export default function Backup({ success, deviceID }) {
 
   const { toast } = useToast();
 
+  const [progress, setProgress] = useState({
+    total: 0,
+    completed: 0,
+    percentage: 0,
+    skipped: [],
+  });
+
   const handleRefreshDrives = async () => {
     setLoadingPaths(true);
     const drives = await getDrives();
@@ -240,8 +247,8 @@ export default function Backup({ success, deviceID }) {
 
   const startBackup = async () => {
     setBackupStarted(true);
-    setOutput(""); // Clear previous output
-    localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
+    setOutput("");
+    setProgress({ total: 0, completed: 0, percentage: 0, skipped: [] });
 
     const eventSource = new EventSource(
       `/api/backupStream?options=${encodeURIComponent(
@@ -253,48 +260,28 @@ export default function Backup({ success, deviceID }) {
       const data = JSON.parse(event.data);
 
       if (data.status === "log") {
-        setOutput((prev) => {
-          const newOutput = prev + data.message + "\n";
-          // Scroll to bottom after state update
-          setTimeout(() => {
-            if (outputRef.current) {
-              outputRef.current.scrollTop = outputRef.current.scrollHeight;
-            }
-          }, 0);
-          return newOutput;
+        setOutput((prev) => prev + data.message + "\n");
+      } else if (data.status === "progress") {
+        setProgress({
+          total: data.total,
+          completed: data.completed,
+          percentage: data.percentage,
         });
       } else if (data.status === "complete") {
         setBackupEnded(true);
+        const messages = data.message.split("|||");
+        setProgress((prev) => ({
+          ...prev,
+          skipped: data.skipped || [],
+        }));
         showToast(
-          <div onClick={(e) => e.stopPropagation()}>
-            {data.message.split("<br />").map((line, index) => (
-              <div key={index}>
-                {index === 0 ? (
-                  <div className="flex flex-row my-1.5 gap-2 text-lg">
-                    <span className="text-green-500 font-bold">Success!</span>
-                    <span className="text-primary/80">
-                      {data.totalFiles === 0 ? "" : data.totalFiles + ` file`}
-                      {data.totalFiles === 0
-                        ? " "
-                        : data.totalFiles - data.skipped.length === 1
-                        ? " "
-                        : "s"}
-                      {data.totalFiles === 0
-                        ? `Skipped ${data.skipped.length} file${
-                            data.skipped.length === 1 ? "" : "s"
-                          } in `
-                        : " backed up in "}
-                      {line}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex flex-row my-1.5">
-                    <SkippedFilesDialog
-                      skipped={data.skipped}
-                      totalFiles={data.totalFiles}
-                    />
-                  </div>
-                )}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex flex-col gap-2"
+          >
+            {messages.map((message, index) => (
+              <div key={index} className="text-lg font-bold">
+                {message}
               </div>
             ))}
           </div>
@@ -308,6 +295,10 @@ export default function Backup({ success, deviceID }) {
         });
         eventSource.close();
         setBackupStarted(false);
+        toast({
+          title: "Backup failed",
+          variant: "destructive",
+        });
       }
     };
 
@@ -480,6 +471,12 @@ export default function Backup({ success, deviceID }) {
       document.removeEventListener("click", handleOutsideClick);
     };
   }, [isToastVisible]);
+
+  useEffect(() => {
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [output]);
 
   return (
     <div
@@ -665,14 +662,12 @@ export default function Backup({ success, deviceID }) {
               )}
 
               {/* Backup Card Footer */}
-              <div className="mt-4">
-                <CardFooterBackupAndStatus
-                  deviceId={deviceId}
-                  backupOptions={backupOptions}
-                  backupStarted={backupStarted}
-                  startBackup={startBackup}
-                />
-              </div>
+              <CardFooterBackupAndStatus
+                deviceId={deviceId}
+                backupOptions={backupOptions}
+                backupStarted={backupStarted}
+                startBackup={startBackup}
+              />
               {backupEnded && <ConfettiExplosion />}
             </form>
           </CardContent>
@@ -680,12 +675,37 @@ export default function Backup({ success, deviceID }) {
       )}
 
       {/* output streamed content */}
-      <textarea
-        ref={outputRef}
-        className="mt-6 resize-none h-96 w-[85%] bg-secondary/30 rounded-md p-2 focus:outline-none focus:ring-2"
-        value={output.trim()}
-        readOnly
-      />
+      <div className="mt-2 sm:w-[85%] w-[92%] max-w-[64rem] mx-auto bg-secondary/30 rounded-md relative">
+        {backupStarted && (
+          <div className="absolute top-0 left-0 w-full">
+            <div className="flex justify-center text-sm text-muted-foreground">
+              <span>
+                Progress: {progress.completed} / {progress.total} files{" "}
+                <b>{progress.percentage}%</b>
+              </span>
+            </div>
+            <div className="w-full bg-secondary rounded-full h-2.5">
+              <div
+                className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${progress.percentage}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+
+        <textarea
+          ref={outputRef}
+          className={`${
+            backupStarted ? "mt-[40px]" : ""
+          } h-72 max-w-[64rem] w-full resize-none bg-transparent focus:outline-none flex flex-col gap-2 mx-auto`}
+          value={output.trim()}
+          readOnly
+        />
+
+        <div className="absolute bottom-2 right-2">
+          <SkippedFilesDialog skipped={progress.skipped || []} />
+        </div>
+      </div>
     </div>
   );
 }

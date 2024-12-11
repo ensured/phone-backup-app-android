@@ -4,6 +4,7 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
+import { HardDrive } from "lucide-react";
 
 const generateTimeAgo = (timeDifferenceInSeconds) => {
   if (timeDifferenceInSeconds < 60) {
@@ -69,10 +70,12 @@ async function fileExistsInBackup(fileName, backupDir) {
 async function pullFilesRecursively(sendSSE, directory, outputDir) {
   let skipped = [];
   let totalFiles = 0;
+  let completedFiles = 0;
+
   try {
-    sendSSE({ 
-      status: "log", 
-      message: `Creating directory: ${outputDir}`
+    sendSSE({
+      status: "log",
+      message: `📁 Creating directory: ${outputDir}`,
     });
 
     const absoluteOutputDir = path.resolve(outputDir);
@@ -81,16 +84,25 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
     const escapedDirectory = escapeBackslashes(directory);
     const normalizedOutputDir = normalizeOutputPath(absoluteOutputDir);
 
-    // Send log to frontend
-    sendSSE({ 
-      status: "log", 
-      message: `Scanning files in: ${directory}`
+    sendSSE({
+      status: "log",
+      message: `🔍 Scanning files in: ${directory}`,
     });
 
     const items = execSync(`adb shell ls -1 "${escapedDirectory}"`)
       .toString()
       .trim()
       .split("\n");
+
+    // Count total files (excluding directories)
+    const fileCount = items.filter((item) => !item.trim().endsWith("/")).length;
+
+    sendSSE({
+      status: "progress",
+      total: fileCount,
+      completed: 0,
+      percentage: 0,
+    });
 
     for (const item of items) {
       const itemName = item.trim();
@@ -101,58 +113,62 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
           const exists = await fileExistsInBackup(itemName, outputDir);
           if (exists) {
             skipped.push(itemName);
-            sendSSE({ 
-              status: "log", 
-              message: `Skipped existing file: ${itemName}`
+            completedFiles++;
+            sendSSE({
+              status: "progress",
+              total: fileCount,
+              completed: completedFiles,
+              percentage: Math.round((completedFiles / fileCount) * 100),
             });
             continue;
           }
           totalFiles++;
 
-          const command = `adb pull "${escapedDirectory}/${itemName}" "${normalizedOutputDir}"`;
           // Use spawn instead of execSync to get real-time output
-          const child = spawn('adb', [
-            'pull',
+          const child = spawn("adb", [
+            "pull",
             `${escapedDirectory}/${itemName}`,
-            normalizedOutputDir
+            normalizedOutputDir,
           ]);
 
-          child.stdout.on('data', (data) => {
-            sendSSE({ 
-              status: "log", 
-              message: data.toString().trim()
+          child.stdout.on("data", (data) => {
+            sendSSE({
+              status: "log",
+              message: `✅ ${data.toString().trim()}`,
             });
           });
 
-          child.stderr.on('data', (data) => {
-            sendSSE({ 
-              status: "log", 
-              message: `${data.toString().trim()}`
+          child.stderr.on("data", (data) => {
+            sendSSE({
+              status: "log",
+              message: `✅ ${data.toString().trim()}`,
             });
           });
 
           // Wait for the process to complete
           await new Promise((resolve, reject) => {
-            child.on('close', (code) => {
+            child.on("close", (code) => {
               if (code === 0) resolve();
               else reject(new Error(`Process exited with code ${code}`));
             });
           });
-          
+
+          // After successful pull
+          completedFiles++;
+          sendSSE({
+            status: "progress",
+            total: fileCount,
+            completed: completedFiles,
+            percentage: Math.round((completedFiles / fileCount) * 100),
+          });
         } catch (error) {
-          sendSSE({ 
-            status: "log", 
-            message: `Error pulling file ${itemName}: ${error.message}`
+          sendSSE({
+            status: "log",
+            message: `❌ Error pulling ${itemName}: ${error.message}`,
           });
         }
       }
     }
-
-    // Send summary log to frontend
-    sendSSE({
-      status: "log",
-      message: `Directory complete: ${directory}\nTotal files: ${totalFiles}\nSkipped: ${skipped.length}`,
-    });
 
     return {
       completed: true,
@@ -161,10 +177,9 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
       totalFiles,
     };
   } catch (e) {
-    // Send error log to frontend
     sendSSE({
       status: "log",
-      message: `Error: ${e.message}`,
+      message: `❌ Error: ${e.message}`,
     });
 
     if (e.message.includes("device unauthorized")) {
@@ -183,14 +198,12 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
 
 // Modify the backup function to remove adb-kit usage
 async function backup(sendSSE, backupOptions, destinationPath) {
-  const startTime = new Date(); // Capture the start time
-  let totalFiles = 0;
-  const skipped = [];
-  const client = Adb.createClient();
-  const devices = await client.listDevices();
-  if (devices.length === 0) {
-    return { completed: false, message: "No device connected" };
-  }
+  const startTime = new Date();
+  let totalStats = {
+    files: 0,
+    skipped: [],
+    results: [],
+  };
 
   let destPathWindows = destinationPath.trim();
 
@@ -231,92 +244,59 @@ async function backup(sendSSE, backupOptions, destinationPath) {
       fs.mkdirSync(outputDir, { recursive: true });
 
       const result = await pullFilesRecursively(sendSSE, src, outputDir);
-      totalFiles += result.totalFiles;
-      if (result.skipped) {
-        skipped.push(...result.skipped);
-      }
-      // Check for any errors from pulling files
       if (!result.completed) {
-        return {
-          completed: result.completed,
-          message: result.message,
-          skipped,
-          totalFiles,
-        }; // Exit early if an error occurred
+        return result;
       }
+
+      totalStats.files += result.totalFiles;
+      totalStats.skipped.push(...result.skipped);
+      totalStats.results.push({
+        location: dest,
+        files: result.totalFiles,
+        skipped: result.skipped.length,
+      });
     }
 
-    const endTime = new Date(); // Capture the end time
-
-    // Calculate the time difference in milliseconds
-    const timeDifference = endTime - startTime;
-
-    // Convert milliseconds to seconds
-    const timeDifferenceInSeconds = Math.ceil(timeDifference / 1000);
+    const endTime = new Date();
+    const timeDifferenceInSeconds = Math.ceil((endTime - startTime) / 1000);
     const timeAgo = generateTimeAgo(timeDifferenceInSeconds);
+
+    const summaryMessage = `✅ Backup Complete|||⏱️ Time taken: ${timeAgo}|||📁 Total files: ${
+      totalStats.files
+    }|||⏭️ Total skipped: ${
+      totalStats.skipped.length
+    }|||📂 By Location:${totalStats.results
+      .map(
+        (r) => `\n   • ${r.location}: ${r.files} files (${r.skipped} skipped)`
+      )
+      .join("")}`;
 
     return {
       completed: true,
-      message: `${timeAgo}<br /> Skipped ${skipped.length} files`,
-      skipped,
-      totalFiles,
+      message: summaryMessage,
+      skipped: totalStats.skipped,
+      totalFiles: totalStats.files,
     };
   } catch (error) {
     return {
       completed: false,
       message: error.message,
-      skipped,
-      totalFiles,
-    };
-  }
-}
-
-async function getFoldersInDirectory(directory) {
-  try {
-    const blacklistedFolders = new Set([
-      "system volume information",
-      "$recycle.bin",
-      "$sysreset",
-      "perflogs",
-      "recovery",
-    ]);
-
-    const isBlacklisted = (folder) =>
-      blacklistedFolders.has(folder.toLowerCase());
-
-    // Extract the folder name from the directory path
-    const folderName = directory.split("\\").pop();
-    if (isBlacklisted(folderName)) {
-      return {
-        status: "error",
-        message: `Directory ${directory} is blacklisted`,
-      };
-    }
-
-    const directories = fs
-      .readdirSync(directory, { withFileTypes: true })
-      .filter((dirent) => dirent.isDirectory() && !isBlacklisted(dirent.name))
-      .map((dirent) => dirent.name);
-
-    return { status: "success", directories };
-  } catch (error) {
-    return {
-      status: "error",
-      message: `Error getting folders in directory: ${directory}`,
+      skipped: totalStats.skipped,
+      totalFiles: totalStats.files,
     };
   }
 }
 
 export default async function handler(req, res) {
   // Set headers for SSE with no caching
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering if using nginx
-  
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering if using nginx
+
   // Helper function to flush data
   const flush = () => {
-    if (typeof res.flush === 'function') {
+    if (typeof res.flush === "function") {
       res.flush();
     }
   };
@@ -332,7 +312,7 @@ export default async function handler(req, res) {
   try {
     // Pass the sendSSE function to backup
     const result = await backup(sendSSE, options, options.destInputValue);
-    
+
     // Send final result
     sendSSE({ status: "complete", ...result });
   } catch (error) {
