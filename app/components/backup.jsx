@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import {
-  backup,
   getDrives,
   getDeviceStatus,
   getFoldersInDirectory,
@@ -15,6 +14,9 @@ import {
   RefreshCcw,
   FileIcon,
   FolderIcon,
+  ArrowBigUp,
+  ArrowBigDown,
+  Check,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardTitle, CardContent, CardHeader } from "@/components/ui/card";
@@ -36,88 +38,13 @@ import {
 
 let socket;
 
-const SkippedFilesDialog = ({ skipped }) => {
-  const files = skipped.filter((file) => file.includes("."));
-  const folders = skipped.filter((file) => !file.includes("."));
-
-  return (
-    <Dialog className="select-none pointer-events-none z-100">
-      <DialogTrigger asChild>
-        {skipped.length > 0 && (
-          <Button variant="outline">
-            <div className="flex items-center gap-2 font-bold text-base text-primary/80">
-              View {skipped.length} skipped
-            </div>
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] pointer-events-none select-none">
-        <DialogDescription></DialogDescription>
-        <DialogHeader className="overflow-hidden h-[50vh]">
-          <DialogTitle>
-            <div className="flex flex-col gap-2 text-center w-full font-bold text-primary/80 p-4">
-              Skipped
-              <div className="flex flex-row gap-2 items-center justify-center">
-                {files.length > 0 && (
-                  <div className="text-primary/80 flex flex-row gap-1 items-centerrounded-md p-1">
-                    <FileIcon className="size-4" />
-                    {files.length} File{files.length === 1 ? "" : "s"}
-                  </div>
-                )}
-                {folders.length > 0 && (
-                  <div className="text-primary/80 flex flex-row gap-1 items-center">
-                    <FolderIcon className="size-4" />
-                    {folders.length} Folder{folders.length === 1 ? "" : "s"}
-                  </div>
-                )}
-              </div>
-            </div>
-          </DialogTitle>
-          <div className="flex flex-col max-h-[50vh] overflow-y-auto border border-border rounded-md">
-            {files.length > 0 && (
-              <div className="rounded-md p-2 mr-2 flex flex-col gap-1 bg-secondary/20">
-                {files.length > 0 && (
-                  <div className="text-lg font-bold flex gap-2 items-center justify-center">
-                    <FileIcon className="size-4" />
-                    Files
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  {files.map((file) => (
-                    <div
-                      key={file}
-                      className="text-xs p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
-                    >
-                      {file}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {folders.length > 0 && (
-              <div className="rounded-md p-2 mr-2 flex flex-col gap-1 bg-secondary/20">
-                <div className="text-lg font-bold flex gap-2 items-center justify-center">
-                  <FolderIcon className="size-4" />
-                  Folders
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {folders.map((folder) => (
-                    <div
-                      key={folder}
-                      className="p-1 border rounded-md shadow-sm select-none line-clamp-1 overflow-auto"
-                    >
-                      {folder}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogHeader>
-      </DialogContent>
-    </Dialog>
-  );
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    return false;
+  }
 };
 
 export default function Backup({ success, deviceID }) {
@@ -153,6 +80,11 @@ export default function Backup({ success, deviceID }) {
     percentage: 0,
     skipped: [],
   });
+
+  const [currentFolder, setCurrentFolder] = useState(""); // New state for current folder
+
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [scrollPercentage, setScrollPercentage] = useState(0);
 
   const handleRefreshDrives = async () => {
     setLoadingPaths(true);
@@ -267,6 +199,7 @@ export default function Backup({ success, deviceID }) {
           completed: data.completed,
           percentage: data.percentage,
         });
+        setCurrentFolder(data.currentFolder); // Update current folder state
       } else if (data.status === "complete") {
         setBackupEnded(true);
         const messages = data.message.split("•");
@@ -550,6 +483,40 @@ export default function Backup({ success, deviceID }) {
     }
   }, [output]);
 
+  const copyAllLogs = async () => {
+    // Store current scroll position
+    const currentScrollPosition = outputRef.current?.scrollTop;
+
+    const allLogs = document.querySelectorAll(".log-message");
+    const allLogsText = Array.from(allLogs)
+      .map((log) => log.innerText)
+      .join("\n");
+
+    await copyToClipboard(allLogsText);
+
+    // Restore scroll position
+    if (outputRef.current) {
+      outputRef.current.scrollTop = currentScrollPosition;
+    }
+
+    toast({
+      title: "Copied to clipboard",
+      variant: "success",
+    });
+  };
+
+  const handleScroll = (e) => {
+    const element = e.currentTarget;
+    const scrollTop = element.scrollTop;
+    const scrollHeight = element.scrollHeight;
+    const clientHeight = element.clientHeight;
+
+    // Calculate scroll percentage (0 to 100)
+    const percentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
+    setScrollPosition(scrollTop);
+    setScrollPercentage(percentage);
+  };
+
   return (
     <div
       className={`flex flex-col items-center justify-center py-6 select-none ${
@@ -747,33 +714,123 @@ export default function Backup({ success, deviceID }) {
       )}
 
       {/* output streamed content */}
-      <div className="mt-2 sm:w-[85%] w-[92%] max-w-[64rem] mx-auto bg-secondary/30 rounded-md relative">
+      <div className="mt-2 sm:w-[92%] w-[90%] lg:max-w-[64rem] mx-auto bg-secondary/30 rounded-md relative">
         {backupStarted && (
-          <div className="absolute top-0 left-0 w-full">
-            <div className="flex justify-center text-muted-foreground">
-              <span>
-                Progress: {progress.completed} / {progress.total} files{" "}
-                <b>{progress.percentage}%</b>
+          <div className="relative top-0 left-0 w-full">
+            <div className="w-full flex items-center justify-between text-muted-foreground">
+              <div className="flex-grow text-center">
+                <span>
+                  {progress.completed} / {progress.total} files{" "}
+                  <b>{progress.percentage}%</b>
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground flex-shrink-0 ml-auto">
+                {currentFolder}
               </span>
             </div>
-            <div className="w-full bg-secondary rounded-full h-2.5">
+            <div className=" w-full bg-secondary rounded-full h-3">
               <div
-                className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                className=" bg-primary h-3 rounded-full transition-all duration-300"
                 style={{ width: `${progress.percentage}%` }}
               ></div>
             </div>
+            {/* Display current folder name */}
           </div>
         )}
         {output.trim().length > 0 && (
-          <textarea
+          <div
             ref={outputRef}
+            onScroll={handleScroll}
             className={`${
-              backupStarted ? "mt-[40px]" : ""
-            } h-72 max-w-[64rem] w-full resize-none bg-transparent focus:outline-none flex flex-col gap-2 mx-auto`}
-            value={output.trim()}
-            readOnly
-          />
+              backupStarted ? "mt-[9px]" : ""
+            } h-72 max-w-[64rem] w-full overflow-auto border border-border rounded-md relative`}
+          >
+            {output
+              .trim()
+              .split("\n")
+              .map((line, index) => (
+                <div
+                  key={index}
+                  className={`log-message ${
+                    index % 2 === 0 ? "even" : "odd"
+                  } group flex items-center justify-between relative select-text`}
+                >
+                  <span className="flex flex-wrap break-all">{line}</span>
+                  <Button
+                    variant={"icon"}
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 size-7 md:size-8 absolute right-2 top-[50%] -translate-y-1/2 "
+                    onClick={async () => {
+                      const success = await copyToClipboard(line);
+                      if (success) {
+                        toast({
+                          variant: "success",
+                          title: (
+                            <div className="flex items-center gap-2">
+                              Copied to clipboard
+                              <Check className="h-4 w-4 text-green-500" />
+                            </div>
+                          ),
+                          duration: 2000,
+                        });
+                      }
+                    }}
+                  >
+                    <FileIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+          </div>
         )}
+        <div className="sticky bottom-0 w-full flex justify-end gap-1 p-2 bg-background/80 backdrop-blur-sm">
+          <div className="relative">
+            <Button
+              variant="secondary"
+              size="sm"
+              className={`absolute right-0 transition-opacity duration-300 ${
+                scrollPercentage > 50
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none"
+              }`}
+              onClick={() => {
+                outputRef.current?.scrollTo({
+                  top: 0,
+                  behavior: "smooth",
+                });
+              }}
+            >
+              <ArrowBigUp className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className={`absolute right-0 transition-opacity duration-300 ${
+                scrollPercentage <= 50 &&
+                outputRef.current?.scrollHeight >
+                  outputRef.current?.clientHeight
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none"
+              }`}
+              onClick={() => {
+                outputRef.current?.scrollTo({
+                  top: outputRef.current.scrollHeight,
+                  behavior: "smooth",
+                });
+              }}
+            >
+              <ArrowBigDown className="h-5 w-5" />
+            </Button>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="flex items-center gap-2"
+            onClick={copyAllLogs}
+          >
+            <FileIcon className="h-4 w-4" />
+            Copy All Logs
+          </Button>
+        </div>
       </div>
     </div>
   );

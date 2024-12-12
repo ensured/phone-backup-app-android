@@ -100,3 +100,26 @@ body {
   filter: blur(4px);
   pointer-events: none;
 }
+
+.log-message {
+  padding: 0.5rem 0.75rem; /* Comfortable padding */
+  border-radius: 0.25rem; /* Subtle rounded corners */
+  display: block;
+  font-family: ui-monospace, monospace; /* Monospace font for logs */
+  transition: background-color 0.1s ease-in-out;
+}
+
+.log-message.even {
+  background-color: hsl(
+    var(--secondary) / 0.3
+  ); /* Using shadcn secondary color */
+}
+
+.log-message.odd {
+  background-color: hsl(var(--background)); /* Using shadcn background color */
+}
+
+/* Optional: Add hover effect */
+.log-message:hover {
+  background-color: hsl(var(--secondary) / 0.5);
+}

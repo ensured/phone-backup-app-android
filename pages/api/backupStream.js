@@ -104,6 +104,7 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
       total: fileCount,
       completed: 0,
       percentage: 0,
+      currentFolder: directory,
     });
 
     for (const item of items) {
@@ -121,6 +122,7 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
               total: fileCount,
               completed: completedFiles,
               percentage: Math.round((completedFiles / fileCount) * 100),
+              currentFolder: directory,
             });
             continue;
           }
@@ -134,16 +136,54 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
           ]);
 
           child.stdout.on("data", (data) => {
+            const logMessage = data.toString().trim();
+            // Use regex to extract the byte count and convert it to MB or KB
+            const updatedLogMessage = logMessage.replace(
+              /(\d+) bytes/,
+              (match, p1) => {
+                const bytes = parseInt(p1, 10);
+                let size;
+                if (bytes < 1024) {
+                  size = `${bytes} bytes`; // Display in bytes if less than 1 KB
+                } else if (bytes < 1024 * 1024) {
+                  const kilobytes = (bytes / 1024).toFixed(2); // Convert to KB and round to 2 decimal places
+                  size = `${kilobytes} KB`;
+                } else {
+                  const megabytes = (bytes / (1024 * 1024)).toFixed(1); // Convert to MB and round to 1 decimal place
+                  size = `${megabytes} MB`;
+                }
+                return size; // Replace with the formatted size value
+              }
+            );
             sendSSE({
               status: "log",
-              message: `✅ ${data.toString().trim()}`,
+              message: `✅ ${updatedLogMessage}`,
             });
           });
 
           child.stderr.on("data", (data) => {
+            const logMessage = data.toString().trim();
+            // Use regex to extract the byte count and convert it to MB or KB
+            const updatedLogMessage = logMessage.replace(
+              /(\d+) bytes/,
+              (match, p1) => {
+                const bytes = parseInt(p1, 10);
+                let size;
+                if (bytes < 1024) {
+                  size = `${bytes} bytes`; // Display in bytes if less than 1 KB
+                } else if (bytes < 1024 * 1024) {
+                  const kilobytes = (bytes / 1024).toFixed(2); // Convert to KB and round to 2 decimal places
+                  size = `${kilobytes} KB`;
+                } else {
+                  const megabytes = (bytes / (1024 * 1024)).toFixed(1); // Convert to MB and round to 1 decimal place
+                  size = `${megabytes} MB`;
+                }
+                return size; // Replace with the formatted size value
+              }
+            );
             sendSSE({
               status: "log",
-              message: `✅ ${data.toString().trim()}`,
+              message: `✅ ${updatedLogMessage}`,
             });
           });
 
@@ -162,6 +202,7 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
             total: fileCount,
             completed: completedFiles,
             percentage: Math.round((completedFiles / fileCount) * 100),
+            currentFolder: directory,
           });
         } catch (error) {
           sendSSE({
@@ -241,7 +282,7 @@ async function backup(sendSSE, backupOptions, destinationPath) {
         fs.mkdirSync(yearFolder, { recursive: true });
         sendSSE({
           status: "log",
-          message: `📁 Creating Year directory: ${yearFolder}`,
+          message: `📁 Creating Year directory because it doesn't exist: ${yearFolder}`,
         });
       }
 
