@@ -717,147 +717,154 @@ export default function Backup({ success, deviceID }) {
       )}
 
       {/* output streamed content */}
-      <div className="mt-2 sm:w-[92%] w-[90%] lg:max-w-[64rem] mx-auto bg-secondary/30 rounded-md relative">
-        {backupStarted && (
-          <div className="relative top-0 left-0 w-full">
-            <div className="w-full flex items-center justify-between text-muted-foreground">
-              <div className="flex-grow text-center">
-                <span>
-                  {progress.completed} / {progress.total} files{" "}
-                  <b>{progress.percentage}%</b>
+      {output.trim().length > 0 && (
+        <div className="mt-2 sm:w-[92%] w-[90%] lg:max-w-[64rem] mx-auto bg-secondary/30 rounded-md relative border border-border">
+          {backupStarted && (
+            <div className="relative top-0 left-0 w-full px-6 py-2 shadow-md ">
+              <div className="w-full flex items-center justify-between text-muted-foreground">
+                <div className="flex-grow text-center">
+                  <span className="text-lg font-semibold">
+                    {progress.completed} / {progress.total} files{" "}
+                    <b className="text-primary">{progress.percentage}%</b>
+                  </span>
+                </div>
+                <span className="px-3 py-1 bg-secondary/50 text-xs flex items-center gap-0.5">
+                  {currentFolder.replace("/storage/emulated/0", "")}
+                  <Loader2 className="size-3 animate-spin" />{" "}
                 </span>
               </div>
-              <span className="text-xs text-muted-foreground flex-shrink-0 ml-auto">
-                {currentFolder}
-              </span>
-            </div>
-            <div className=" w-full bg-secondary rounded-full h-3">
-              <div
-                className=" bg-primary h-3 rounded-full transition-all duration-300"
-                style={{ width: `${progress.percentage}%` }}
-              ></div>
-            </div>
-            {/* Display current folder name */}
-          </div>
-        )}
-        {output.trim().length > 0 && (
-          <div
-            ref={outputRef}
-            onScroll={handleScroll}
-            className={`${
-              backupStarted ? "mt-[9px]" : ""
-            } h-72 max-w-[64rem] w-full overflow-auto border border-border rounded-md relative`}
-          >
-            {output
-              .trim()
-              .split("\n")
-              .map((line, index) => (
+              <div className="w-full bg-secondary rounded-full h-2 mt-2">
                 <div
-                  key={index}
-                  className={`log-message ${
-                    index % 2 === 0 ? "even" : "odd"
-                  } relative select-text hover:bg-secondary/50`}
-                  onMouseEnter={(e) => {
-                    setHoveredLine(line);
-                    setMousePosition({
-                      x: e.clientX,
-                      y: e.clientY - 25, // Position slightly above cursor
-                    });
-                  }}
-                  onMouseMove={(e) => {
-                    setMousePosition({
-                      x: e.clientX,
-                      y: e.clientY - 25,
-                    });
-                  }}
-                  onMouseLeave={() => {
-                    setHoveredLine(null);
-                  }}
-                  onClick={async () => {
-                    const success = await copyToClipboard(line);
-                    if (success) {
-                      toast({
-                        variant: "success",
-                        title: (
-                          <div className="flex items-center gap-2">
-                            Copied to clipboard
-                            <Check className="h-4 w-4 text-green-500" />
-                          </div>
-                        ),
-                        duration: 2000,
-                      });
-                    }
-                  }}
-                >
-                  <span className="flex flex-wrap break-all p-1">{line}</span>
-                  {hoveredLine === line && (
+                  className="bg-primary/90 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progress.percentage}%` }}
+                ></div>
+              </div>
+              {/* Display current folder name */}
+            </div>
+          )}
+
+          {output.trim().length > 0 && (
+            <>
+              <div
+                ref={outputRef}
+                onScroll={handleScroll}
+                className={`${
+                  backupStarted ? "mt-[9px]" : ""
+                } h-[18rem] max-w-[64rem] w-full overflow-auto relative`}
+              >
+                {output
+                  .trim()
+                  .split("\n")
+                  .map((line, index) => (
                     <div
-                      className="fixed z-50 bg-popover text-popover-foreground px-2 py-1 rounded-md text-xs shadow-md pointer-events-none"
-                      style={{
-                        left: `${mousePosition.x}px`,
-                        top: `${mousePosition.y}px`,
-                        transform: "translate(-50%, -100%)",
+                      key={index}
+                      className={`log-message ${
+                        index % 2 === 0 ? "even" : "odd"
+                      } relative select-text hover:bg-secondary/50`}
+                      onMouseEnter={(e) => {
+                        setHoveredLine(line);
+                        setMousePosition({
+                          x: e.clientX,
+                          y: e.clientY - 25, // Position slightly above cursor
+                        });
+                      }}
+                      onMouseMove={(e) => {
+                        setMousePosition({
+                          x: e.clientX,
+                          y: e.clientY - 25,
+                        });
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredLine(null);
+                      }}
+                      onClick={async () => {
+                        const success = await copyToClipboard(line);
+                        if (success) {
+                          toast({
+                            variant: "success",
+                            title: (
+                              <div className="flex items-center gap-2">
+                                Copied to clipboard
+                                <Check className="h-4 w-4 text-green-500" />
+                              </div>
+                            ),
+                            duration: 2000,
+                          });
+                        }
                       }}
                     >
-                      Click to copy
+                      <span className="flex flex-wrap break-all p-0.5">
+                        {line}
+                      </span>
+                      {hoveredLine === line && (
+                        <div
+                          className="fixed z-50 bg-popover text-popover-foreground px-2 py-1 text-xs shadow-md pointer-events-none"
+                          style={{
+                            left: `${mousePosition.x}px`,
+                            top: `${mousePosition.y}px`,
+                            transform: "translate(-50%, -100%)",
+                          }}
+                        >
+                          Click to copy
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
+              </div>
+
+              <div className="sticky bottom-0 w-full flex justify-end gap-1 p-2 bg-background/80 backdrop-blur-sm rounded-md">
+                <div className="relative">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className={`absolute right-0 transition-opacity duration-300 ${
+                      scrollPercentage > 50
+                        ? "opacity-100"
+                        : "opacity-0 pointer-events-none"
+                    }`}
+                    onClick={() => {
+                      outputRef.current?.scrollTo({
+                        top: 0,
+                        behavior: "smooth",
+                      });
+                    }}
+                  >
+                    <ArrowBigUp className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className={`absolute right-0 transition-opacity duration-300 ${
+                      scrollPercentage <= 50 &&
+                      outputRef.current?.scrollHeight >
+                        outputRef.current?.clientHeight
+                        ? "opacity-100"
+                        : "opacity-0 pointer-events-none"
+                    }`}
+                    onClick={() => {
+                      outputRef.current?.scrollTo({
+                        top: outputRef.current.scrollHeight,
+                        behavior: "smooth",
+                      });
+                    }}
+                  >
+                    <ArrowBigDown className="h-5 w-5" />
+                  </Button>
                 </div>
-              ))}
-          </div>
-        )}
-        {backupStarted && (
-          <div className="sticky bottom-0 w-full flex justify-end gap-1 p-2 bg-background/80 backdrop-blur-sm">
-            <div className="relative">
-              <Button
-                variant="secondary"
-                size="sm"
-                className={`absolute right-0 transition-opacity duration-300 ${
-                  scrollPercentage > 50
-                    ? "opacity-100"
-                    : "opacity-0 pointer-events-none"
-                }`}
-                onClick={() => {
-                  outputRef.current?.scrollTo({
-                    top: 0,
-                    behavior: "smooth",
-                  });
-                }}
-              >
-                <ArrowBigUp className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className={`absolute right-0 transition-opacity duration-300 ${
-                  scrollPercentage <= 50 &&
-                  outputRef.current?.scrollHeight >
-                    outputRef.current?.clientHeight
-                    ? "opacity-100"
-                    : "opacity-0 pointer-events-none"
-                }`}
-                onClick={() => {
-                  outputRef.current?.scrollTo({
-                    top: outputRef.current.scrollHeight,
-                    behavior: "smooth",
-                  });
-                }}
-              >
-                <ArrowBigDown className="h-5 w-5" />
-              </Button>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="flex items-center gap-2"
-              onClick={copyAllLogs}
-            >
-              <FileIcon className="h-4 w-4" />
-              Copy All Logs
-            </Button>
-          </div>
-        )}
-      </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={copyAllLogs}
+                >
+                  <FileIcon className="h-4 w-4" />
+                  Copy All Logs
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

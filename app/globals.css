@@ -88,12 +88,12 @@ body {
   width: 1px; /* Width of the vertical scrollbar */
   height: 1px; /* Height of the horizontal scrollbar */
   border-radius: 10px;
-  background-color: #c0ffee50;
+  background-color: rgba(175, 175, 175, 0.664);
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #c0ffee;
-  border-radius: 10px; /* Optional: if you want rounded thumbs */
+  background-color: rgba(0, 255, 42, 0.466);
+  border-radius: 2px; /* Optional: if you want rounded thumbs */
 }
 
 .blur-effect {
@@ -103,7 +103,6 @@ body {
 
 .log-message {
   padding: 0.5rem 0.75rem; /* Comfortable padding */
-  border-radius: 0.25rem; /* Subtle rounded corners */
   display: block;
   font-family: ui-monospace, monospace; /* Monospace font for logs */
   transition: background-color 0.1s ease-in-out;

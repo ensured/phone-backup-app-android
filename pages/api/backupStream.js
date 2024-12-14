@@ -88,7 +88,10 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
 
     sendSSE({
       status: "log",
-      message: `🔍 Scanning files in: ${directory}`,
+      message: `🔍 Scanning files in ${directory.replace(
+        "/storage/emulated/0",
+        ""
+      )}`,
     });
 
     const items = execSync(`adb shell ls -1 "${escapedDirectory}"`)
@@ -276,6 +279,7 @@ async function backup(sendSSE, backupOptions, destinationPath) {
       (location) => backupOptions[location.key]
     )) {
       const { src, dest } = location;
+
       // check year folder exists
       const yearFolder = `${destPathWindows}${generateDate()}\\`;
       if (!fs.existsSync(yearFolder)) {
