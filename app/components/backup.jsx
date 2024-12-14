@@ -86,6 +86,9 @@ export default function Backup({ success, deviceID }) {
   const [scrollPosition, setScrollPosition] = useState(0);
   const [scrollPercentage, setScrollPercentage] = useState(0);
 
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [hoveredLine, setHoveredLine] = useState(null);
+
   const handleRefreshDrives = async () => {
     setLoadingPaths(true);
     const drives = await getDrives();
@@ -753,84 +756,107 @@ export default function Backup({ success, deviceID }) {
                   key={index}
                   className={`log-message ${
                     index % 2 === 0 ? "even" : "odd"
-                  } group flex items-center justify-between relative select-text`}
+                  } relative select-text hover:bg-secondary/50`}
+                  onMouseEnter={(e) => {
+                    setHoveredLine(line);
+                    setMousePosition({
+                      x: e.clientX,
+                      y: e.clientY - 25, // Position slightly above cursor
+                    });
+                  }}
+                  onMouseMove={(e) => {
+                    setMousePosition({
+                      x: e.clientX,
+                      y: e.clientY - 25,
+                    });
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredLine(null);
+                  }}
+                  onClick={async () => {
+                    const success = await copyToClipboard(line);
+                    if (success) {
+                      toast({
+                        variant: "success",
+                        title: (
+                          <div className="flex items-center gap-2">
+                            Copied to clipboard
+                            <Check className="h-4 w-4 text-green-500" />
+                          </div>
+                        ),
+                        duration: 2000,
+                      });
+                    }
+                  }}
                 >
-                  <span className="flex flex-wrap break-all">{line}</span>
-                  <Button
-                    variant={"icon"}
-                    size="icon"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 size-7 md:size-8 absolute right-2 top-[50%] -translate-y-1/2 "
-                    onClick={async () => {
-                      const success = await copyToClipboard(line);
-                      if (success) {
-                        toast({
-                          variant: "success",
-                          title: (
-                            <div className="flex items-center gap-2">
-                              Copied to clipboard
-                              <Check className="h-4 w-4 text-green-500" />
-                            </div>
-                          ),
-                          duration: 2000,
-                        });
-                      }
-                    }}
-                  >
-                    <FileIcon className="h-4 w-4" />
-                  </Button>
+                  <span className="flex flex-wrap break-all p-1">{line}</span>
+                  {hoveredLine === line && (
+                    <div
+                      className="fixed z-50 bg-popover text-popover-foreground px-2 py-1 rounded-md text-xs shadow-md pointer-events-none"
+                      style={{
+                        left: `${mousePosition.x}px`,
+                        top: `${mousePosition.y}px`,
+                        transform: "translate(-50%, -100%)",
+                      }}
+                    >
+                      Click to copy
+                    </div>
+                  )}
                 </div>
               ))}
           </div>
         )}
-        <div className="sticky bottom-0 w-full flex justify-end gap-1 p-2 bg-background/80 backdrop-blur-sm">
-          <div className="relative">
+        {backupStarted && (
+          <div className="sticky bottom-0 w-full flex justify-end gap-1 p-2 bg-background/80 backdrop-blur-sm">
+            <div className="relative">
+              <Button
+                variant="secondary"
+                size="sm"
+                className={`absolute right-0 transition-opacity duration-300 ${
+                  scrollPercentage > 50
+                    ? "opacity-100"
+                    : "opacity-0 pointer-events-none"
+                }`}
+                onClick={() => {
+                  outputRef.current?.scrollTo({
+                    top: 0,
+                    behavior: "smooth",
+                  });
+                }}
+              >
+                <ArrowBigUp className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className={`absolute right-0 transition-opacity duration-300 ${
+                  scrollPercentage <= 50 &&
+                  outputRef.current?.scrollHeight >
+                    outputRef.current?.clientHeight
+                    ? "opacity-100"
+                    : "opacity-0 pointer-events-none"
+                }`}
+                onClick={() => {
+                  outputRef.current?.scrollTo({
+                    top: outputRef.current.scrollHeight,
+                    behavior: "smooth",
+                  });
+                }}
+              >
+                <ArrowBigDown className="h-5 w-5" />
+              </Button>
+            </div>
             <Button
               variant="secondary"
               size="sm"
-              className={`absolute right-0 transition-opacity duration-300 ${
-                scrollPercentage > 50
-                  ? "opacity-100"
-                  : "opacity-0 pointer-events-none"
-              }`}
-              onClick={() => {
-                outputRef.current?.scrollTo({
-                  top: 0,
-                  behavior: "smooth",
-                });
-              }}
+              className="flex items-center gap-2"
+              onClick={copyAllLogs}
             >
-              <ArrowBigUp className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className={`absolute right-0 transition-opacity duration-300 ${
-                scrollPercentage <= 50 &&
-                outputRef.current?.scrollHeight >
-                  outputRef.current?.clientHeight
-                  ? "opacity-100"
-                  : "opacity-0 pointer-events-none"
-              }`}
-              onClick={() => {
-                outputRef.current?.scrollTo({
-                  top: outputRef.current.scrollHeight,
-                  behavior: "smooth",
-                });
-              }}
-            >
-              <ArrowBigDown className="h-5 w-5" />
+              <FileIcon className="h-4 w-4" />
+              Copy All Logs
             </Button>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="flex items-center gap-2"
-            onClick={copyAllLogs}
-          >
-            <FileIcon className="h-4 w-4" />
-            Copy All Logs
-          </Button>
-        </div>
+        )}
       </div>
     </div>
   );
