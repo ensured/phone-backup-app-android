@@ -27,6 +27,21 @@ function executeAdbCommand(command, args) {
   });
 }
 
+export async function deletePath(path) {
+  // Add another backslash for Windows paths
+  const formattedPath = path.replace(/\\/g, "\\\\");
+  console.log("Formatted path:", formattedPath);
+
+  try {
+    // Recursively delete the directory and its contents
+    fs.rmSync(formattedPath, { recursive: true, force: true });
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting path:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function deleteSources(backupOptions) {
   const message = [];
   const emptyStatus = {};

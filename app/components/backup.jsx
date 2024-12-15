@@ -4,6 +4,7 @@ import {
   getDrives,
   getDeviceStatus,
   getFoldersInDirectory,
+  deletePath,
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,11 +13,10 @@ import {
   Trash2Icon,
   ArrowBigLeft,
   RefreshCcw,
-  FileIcon,
-  FolderIcon,
   ArrowBigUp,
   ArrowBigDown,
   Check,
+  Copy,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardTitle, CardContent, CardHeader } from "@/components/ui/card";
@@ -35,6 +35,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "../../components/ui/alert-dialog";
 
 let socket;
 
@@ -66,7 +76,6 @@ export default function Backup({ success, deviceID }) {
   const [isToastVisible, setIsToastVisible] = useState(false);
 
   const [output, setOutput] = useState("");
-  const [outputVisible, setOutputVisible] = useState(false);
   const outputRef = useRef(null);
 
   const selectRef = useRef(null); // Create a ref for the select element
@@ -82,18 +91,44 @@ export default function Backup({ success, deviceID }) {
   });
 
   const [currentFolder, setCurrentFolder] = useState(""); // New state for current folder
-
-  const [scrollPosition, setScrollPosition] = useState(0);
   const [scrollPercentage, setScrollPercentage] = useState(0);
 
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [hoveredLine, setHoveredLine] = useState(null);
+
+  const [open, setOpen] = useState(false);
+
+  const isRootDrive = /^[A-Z]:\\$/i.test(backupOptions.destInputValue);
+
+  const handleDeletePath = async () => {
+    const result = await deletePath(backupOptions.destInputValue);
+    if (result.success) {
+      toast({
+        title: `${backupOptions.destInputValue} deleted.`,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Failed to delete path",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleRefreshDrives = async () => {
     setLoadingPaths(true);
     const drives = await getDrives();
     setDrives(drives);
     setLoadingPaths(false);
+  };
+
+  const handleRefreshFolders = async () => {
+    const { status, directories } = await getFoldersInDirectory(
+      backupOptions.destInputValue
+    );
+    if (status === "success") {
+      setSelectPathsAvailable(directories);
+    }
   };
 
   async function socketInitializer() {
@@ -293,6 +328,7 @@ export default function Backup({ success, deviceID }) {
             })}
           </div>
         );
+        handleRefreshFolders();
         eventSource.close();
         setBackupStarted(false);
       } else if (data.status === "error") {
@@ -347,8 +383,6 @@ export default function Backup({ success, deviceID }) {
   };
 
   const handleClearInput = (e) => {
-    e.preventDefault();
-
     setBackupOptions((prev) => ({
       ...prev,
       destInputValue: backupOptions.destInputValue.slice(0, 3),
@@ -503,7 +537,7 @@ export default function Backup({ success, deviceID }) {
     }
 
     toast({
-      title: "Copied to clipboard",
+      title: `Copied ${allLogs.length} lines to clipboard`,
       variant: "success",
     });
   };
@@ -516,7 +550,6 @@ export default function Backup({ success, deviceID }) {
 
     // Calculate scroll percentage (0 to 100)
     const percentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
-    setScrollPosition(scrollTop);
     setScrollPercentage(percentage);
   };
 
@@ -608,15 +641,17 @@ export default function Backup({ success, deviceID }) {
                         <Loader2 className="absolute w-full h-full animate-spin flex items-center justify-center" />
                       </Skeleton>
                     ) : (
-                      <Input
-                        ref={inputRef}
-                        autoComplete="true"
-                        onChange={handleDestInputChange}
-                        type="text"
-                        disabled={!checkedDrive}
-                        value={backupOptions.destInputValue}
-                        className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
+                      <div className="flex flex-row items-center gap-1">
+                        <Input
+                          ref={inputRef}
+                          autoComplete="true"
+                          onChange={handleDestInputChange}
+                          type="text"
+                          disabled={!checkedDrive}
+                          value={backupOptions.destInputValue}
+                          className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
                     )}
 
                     <div className="flex flex-row items-center gap-1">
@@ -656,24 +691,72 @@ export default function Backup({ success, deviceID }) {
                             : ""
                         }`}
                       >
-                        <Button
-                          disabled={
-                            backupOptions.destInputValue.length === 3 ||
-                            backupOptions.destInputValue === ""
-                          }
-                          variant="outline"
-                          onClick={handleClearInput}
-                          className="p-2 text-red-500 rounded-md hover:bg-destructive hover:cursor"
-                        >
-                          <Trash2Icon
-                            className={`size-5 hover:cursor-pointer duration-200 ${
-                              backupOptions.destInputValue.length === 3 ||
-                              backupOptions.destInputValue === ""
-                                ? "text-gray-500 cursor-not-allowed"
-                                : "text-red-500"
-                            }`}
-                          />
-                        </Button>
+                        <Dialog open={open} onOpenChange={setOpen}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              disabled={
+                                backupOptions.destInputValue.length === 3 ||
+                                backupOptions.destInputValue === "" ||
+                                isRootDrive
+                              }
+                              className="p-2 text-red-500 rounded-md hover:bg-destructive hover:cursor"
+                            >
+                              <Trash2Icon className="size-5" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogTitle></DialogTitle>
+                            <DialogHeader>
+                              <DialogDescription>
+                                <div className="flex flex-col justify-center items-center gap-6 pb-3">
+                                  <Button
+                                    variant="destructive"
+                                    onClick={(e) => {
+                                      handleClearInput();
+                                      setOpen(false);
+                                    }}
+                                  >
+                                    Clear input
+                                  </Button>
+
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="destructive">
+                                        Delete path and all contents
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                          Confirm Deletion
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete this
+                                          path and all its contents? This action
+                                          cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogCancel
+                                        onClick={() => setOpen(false)}
+                                      >
+                                        Cancel
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => {
+                                          handleDeletePath();
+                                          setOpen(false);
+                                        }}
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </DialogDescription>
+                            </DialogHeader>
+                          </DialogContent>
+                        </Dialog>
 
                         <Button
                           variant="outline"
@@ -816,8 +899,8 @@ export default function Backup({ success, deviceID }) {
                 <div className="relative">
                   <Button
                     variant="secondary"
-                    size="sm"
-                    className={`absolute right-0 transition-opacity duration-300 ${
+                    size="icon"
+                    className={`absolute right-0 transition-opacity duration-200 ${
                       scrollPercentage > 50
                         ? "opacity-100"
                         : "opacity-0 pointer-events-none"
@@ -829,12 +912,12 @@ export default function Backup({ success, deviceID }) {
                       });
                     }}
                   >
-                    <ArrowBigUp className="h-5 w-5" />
+                    <ArrowBigUp className="size-8" />
                   </Button>
                   <Button
                     variant="secondary"
-                    size="sm"
-                    className={`absolute right-0 transition-opacity duration-300 ${
+                    size="icon"
+                    className={`absolute right-0 transition-opacity duration-200 ${
                       scrollPercentage <= 50 &&
                       outputRef.current?.scrollHeight >
                         outputRef.current?.clientHeight
@@ -848,17 +931,16 @@ export default function Backup({ success, deviceID }) {
                       });
                     }}
                   >
-                    <ArrowBigDown className="h-5 w-5" />
+                    <ArrowBigDown className="size-8" />
                   </Button>
                 </div>
                 <Button
                   variant="secondary"
-                  size="sm"
                   className="flex items-center gap-2"
                   onClick={copyAllLogs}
                 >
-                  <FileIcon className="h-4 w-4" />
-                  Copy All Logs
+                  <Copy className="size-5" />
+                  Copy Logs
                 </Button>
               </div>
             </>

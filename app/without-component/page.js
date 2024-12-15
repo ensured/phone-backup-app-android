@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getDeviceStatus, backup, getDrives } from "../../actions/_actions";
+import { getDrives } from "../../actions/_actions";
 import { Button } from "@/components/ui/button";
 import { CheckIcon, DatabaseBackup, Loader2, XIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -102,42 +102,142 @@ export default function CardComponent() {
 
   const startBackup = async () => {
     setBackupStarted(true);
+    setOutput("");
+    setProgress({ total: 0, completed: 0, percentage: 0, skipped: [] });
 
-    // Save updated backup options to localStorage
-    localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
-
-    const { completed, message } = await backup(
-      backupOptions,
-      backupOptions.destInputValue
+    const eventSource = new EventSource(
+      `/api/backupStream?options=${encodeURIComponent(
+        JSON.stringify(backupOptions)
+      )}`
     );
-    const options = {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    };
-    const formattedDate = new Date().toLocaleString("en-US", options);
 
-    if (completed) {
-      setBackupEnded(true);
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.status === "log") {
+        setOutput((prev) => prev + data.message + "\n");
+      } else if (data.status === "progress") {
+        setProgress({
+          total: data.total,
+          completed: data.completed,
+          percentage: data.percentage,
+        });
+        setCurrentFolder(data.currentFolder); // Update current folder state
+      } else if (data.status === "complete") {
+        setBackupEnded(true);
+        const messages = data.message.split("•");
+        setProgress((prev) => ({
+          ...prev,
+          skipped: data.skipped || [],
+        }));
+        showToast(
+          <div className="grid grid-cols-1 gap-1 place-items-center ">
+            {messages.map((message, index) => {
+              if (message.includes("|||")) {
+                // Split and format the completion summary
+                return message.split("|||").map((msg, subIndex) => {
+                  // For time taken and total files, create a side-by-side layout
+                  if (subIndex === 1 || subIndex === 2) {
+                    return subIndex % 2 === 1 ? (
+                      <div
+                        key={`${index}-${subIndex}`}
+                        className="grid grid-cols-2 gap-4 py-1 text-muted-foreground"
+                      >
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <span className="text-lg">{msg.slice(0, 2)}</span>
+                          <span className="text-lg">{msg.slice(2)}</span>
+                        </div>
+                        {/* Render the next item inline */}
+                        <div className="flex items-center gap-2 text-lg text-muted-foreground">
+                          <span>
+                            {messages[index]
+                              .split("|||")
+                              [subIndex + 1].slice(0, 2)}
+                          </span>
+                          <span>
+                            {messages[index]
+                              .split("|||")
+                              [subIndex + 1].slice(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null;
+                  }
+
+                  // Main completion message and skipped count
+                  return subIndex === 0 || subIndex === 3 ? (
+                    <div
+                      key={`${index}-${subIndex}`}
+                      className={`pb-2 flex items-center gap-2 text-muted-foreground ${
+                        subIndex === 0 ? "text-lg border-b" : "text-lg"
+                      }`}
+                    >
+                      <span className="text-lg">{msg.slice(0, 2)}</span>
+                      <span className="text-lg">{msg.slice(2)}</span>
+                    </div>
+                  ) : null;
+                });
+              }
+
+              // Handle location summaries (lines starting with •)
+              if (message.startsWith("•")) {
+                const locationInfo = message.slice(2).split(":");
+                return (
+                  <div key={index} className="flex items-center gap-2 ">
+                    <div className="flex items-center gap-2">
+                      <span>•</span>
+                      <span className="font-medium text-lg">
+                        {locationInfo[0]}
+                      </span>
+                      <span className="text-muted-foreground text-lg">
+                        {locationInfo[1]}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Default message format
+              return (
+                <div
+                  key={index}
+                  className="font-medium text-lg text-muted-foreground"
+                >
+                  {index === 1 ? (
+                    <span className="border-t pt-2 ">{message}</span>
+                  ) : (
+                    <span>{message}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+        eventSource.close();
+        setBackupStarted(false);
+      } else if (data.status === "error") {
+        toast({
+          title: data.message,
+          variant: "destructive",
+        });
+        eventSource.close();
+        setBackupStarted(false);
+        toast({
+          title: "Backup failed",
+          variant: "destructive",
+        });
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("EventSource error:", error);
+      eventSource.close();
+      setBackupStarted(false);
       toast({
-        title: message,
-        description: "Backed up at: " + formattedDate,
-        duration: 86400,
-        variant: "success",
-      });
-    } else {
-      setBackupEnded(false);
-      toast({
-        title: message,
-        description: formattedDate,
+        title: "Backup failed",
         variant: "destructive",
       });
-    }
-    setBackupStarted(false);
+    };
   };
 
   const handleDestInputChange = (event) => {
