@@ -37,6 +37,19 @@ const Header = () => {
       className={`flex items-center justify-between p-4 text-foreground bg--background shadow-md shadow-border`}
     >
       <Link
+        href="/usb"
+        className="hover:text-purple-700 dark:hover:text-purple-700 transition-colors duration-200"
+      >
+        <h1
+          className={cn(
+            adlam.className,
+            "text-2xl flex flex-row items-center select-none "
+          )}
+        >
+          web USB
+        </h1>
+      </Link>
+      <Link
         href="/"
         className="hover:text-purple-700 dark:hover:text-purple-700 transition-colors duration-200"
       >
@@ -49,6 +62,7 @@ const Header = () => {
           <DatabaseBackup className="mr-3 size-6 " /> Backup Buddy
         </h1>
       </Link>
+
       <Button
         variant="outline"
         size="icon"

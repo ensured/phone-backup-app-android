@@ -18,6 +18,7 @@ import {
   Check,
   Copy,
 } from "lucide-react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardTitle, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -100,6 +101,9 @@ export default function Backup({ success, deviceID }) {
 
   const isRootDrive = /^[A-Z]:\\$/i.test(backupOptions.destInputValue);
 
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [deviceStatusChecked, setDeviceStatusChecked] = useState(false); // New state to track device status check
+
   const handleDeletePath = async () => {
     const result = await deletePath(backupOptions.destInputValue);
     if (result.success) {
@@ -179,6 +183,7 @@ export default function Backup({ success, deviceID }) {
         setCheckedDrive(driveLetter); // Set the checked drive based on saved destination
       }
       setLoadingPaths(false);
+      setInitialLoad(false); // Set initialLoad to false after fetching drives
     };
 
     fetchDrives();
@@ -188,6 +193,7 @@ export default function Backup({ success, deviceID }) {
       if (deviceId) {
         setDeviceId(deviceId); // Set the connected deviceId
       }
+      setDeviceStatusChecked(true); // Mark device status as checked
     };
     fetchDeviceStatus();
 
@@ -559,7 +565,7 @@ export default function Backup({ success, deviceID }) {
         isToastVisible ? "blur-effect" : ""
       }`}
     >
-      {!deviceId ? (
+      {!deviceId && !initialLoad && deviceStatusChecked ? (
         <DeviceNotConnected />
       ) : (
         <Card className="w-full max-w-md shadow-lg rounded-lg border border-gray-300">
@@ -706,54 +712,57 @@ export default function Backup({ success, deviceID }) {
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
-                            <DialogTitle></DialogTitle>
+                            <DialogTitle>
+                              <VisuallyHidden>nice</VisuallyHidden>
+                            </DialogTitle>
                             <DialogHeader>
                               <DialogDescription>
-                                <div className="flex flex-col justify-center items-center gap-6 pb-3">
-                                  <Button
-                                    variant="destructive"
-                                    onClick={(e) => {
-                                      handleClearInput();
-                                      setOpen(false);
-                                    }}
-                                  >
-                                    Clear input
-                                  </Button>
-
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="destructive">
-                                        Delete path and all contents
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>
-                                          Confirm Deletion
-                                        </AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Are you sure you want to delete this
-                                          path and all its contents? This action
-                                          cannot be undone.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogCancel
-                                        onClick={() => setOpen(false)}
-                                      >
-                                        Cancel
-                                      </AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => {
-                                          handleDeletePath();
-                                          setOpen(false);
-                                        }}
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
+                                <VisuallyHidden>nice</VisuallyHidden>
                               </DialogDescription>
+                              <div className="flex flex-col justify-center items-center gap-6 pb-3">
+                                <Button
+                                  variant="destructive"
+                                  onClick={(e) => {
+                                    handleClearInput();
+                                    setOpen(false);
+                                  }}
+                                >
+                                  Clear input
+                                </Button>
+
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="destructive">
+                                      Delete path and all contents
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        Confirm Deletion
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete this
+                                        path and all its contents? This action
+                                        cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogCancel
+                                      onClick={() => setOpen(false)}
+                                    >
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => {
+                                        handleDeletePath();
+                                        setOpen(false);
+                                      }}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             </DialogHeader>
                           </DialogContent>
                         </Dialog>
@@ -787,12 +796,16 @@ export default function Backup({ success, deviceID }) {
               )}
 
               {/* Backup Card Footer */}
-              <CardFooterBackupAndStatus
-                deviceId={deviceId}
-                backupOptions={backupOptions}
-                backupStarted={backupStarted}
-                startBackup={startBackup}
-              />
+              {deviceId ? (
+                <CardFooterBackupAndStatus
+                  deviceId={deviceId}
+                  backupOptions={backupOptions}
+                  backupStarted={backupStarted}
+                  startBackup={startBackup}
+                />
+              ) : (
+                <Skeleton className="w-full h-9 rounded-md" />
+              )}
               {backupEnded && <ConfettiExplosion />}
             </form>
           </CardContent>
