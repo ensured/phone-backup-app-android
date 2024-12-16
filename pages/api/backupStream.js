@@ -1,10 +1,8 @@
 import generateDate from "@/util/date";
-import Adb from "@devicefarmer/adbkit";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
-import { HardDrive } from "lucide-react";
 
 const generateTimeAgo = (timeDifferenceInSeconds) => {
   if (timeDifferenceInSeconds < 60) {
@@ -66,6 +64,33 @@ async function fileExistsInBackup(fileName, backupDir) {
   return false; // File does not exist
 }
 
+// Helper function to format log messages
+function formatLogMessage(data) {
+  const logMessage = data.toString().trim();
+  return logMessage.replace(/(\d+) bytes/, (match, p1) => {
+    const bytes = parseInt(p1, 10);
+    let size;
+    if (bytes < 1024) {
+      size = `${bytes} bytes`;
+    } else if (bytes < 1024 * 1024) {
+      const kilobytes = (bytes / 1024).toFixed(2);
+      size = `${kilobytes} KB`;
+    } else {
+      const megabytes = (bytes / (1024 * 1024)).toFixed(1);
+      size = `${megabytes} MB`;
+    }
+    return size;
+  });
+}
+
+// Helper function to log messages
+function logMessage(sendSSE, message) {
+  sendSSE({
+    status: "log",
+    message,
+  });
+}
+
 // Function to pull files recursively
 async function pullFilesRecursively(sendSSE, directory, outputDir) {
   let skipped = [];
@@ -76,145 +101,81 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
     const absoluteOutputDir = path.resolve(outputDir);
 
     if (!fs.existsSync(absoluteOutputDir)) {
-      sendSSE({
-        status: "log",
-        message: `📁 Creating directory: ${outputDir}`,
-      });
+      logMessage(sendSSE, `📁 Creating directory: ${outputDir}`);
       fs.mkdirSync(absoluteOutputDir, { recursive: true });
     }
 
     const escapedDirectory = escapeBackslashes(directory);
     const normalizedOutputDir = normalizeOutputPath(absoluteOutputDir);
 
-    sendSSE({
-      status: "log",
-      message: `🔍 Scanning files in ${directory.replace(
-        "/storage/emulated/0",
-        ""
-      )}`,
-    });
+    logMessage(
+      sendSSE,
+      `🔍 Scanning files in ${directory.replace("/storage/emulated/0", "")}`
+    );
 
     const items = execSync(`adb shell ls -1 "${escapedDirectory}"`)
       .toString()
       .trim()
       .split("\n");
 
-    // Count total files (excluding directories)
-    const fileCount = items.filter((item) => !item.trim().endsWith("/")).length;
+    logMessage(
+      sendSSE,
+      `🔍 Scanning files in ${directory.replace("/storage/emulated/0", "")}`
+    );
 
-    sendSSE({
-      status: "progress",
-      total: fileCount,
-      completed: 0,
-      percentage: 0,
-      currentFolder: directory,
-    });
+    await Promise.all(
+      items.map(async (item) => {
+        const itemName = item.trim();
+        const isDirectory = itemName.endsWith("/");
 
-    for (const item of items) {
-      const itemName = item.trim();
-      const isDirectory = itemName.endsWith("/");
+        if (!isDirectory) {
+          try {
+            const exists = await fileExistsInBackup(itemName, outputDir);
+            if (exists) {
+              skipped.push(itemName);
+              completedFiles++;
+              logMessage(sendSSE, `File already exists: ${itemName}`);
+              return; // Skip to the next item
+            }
+            totalFiles++;
 
-      if (!isDirectory) {
-        try {
-          const exists = await fileExistsInBackup(itemName, outputDir);
-          if (exists) {
-            skipped.push(itemName);
+            // Use spawn instead of execSync to get real-time output
+            const child = spawn("adb", [
+              "pull",
+              `${escapedDirectory}/${itemName}`,
+              normalizedOutputDir,
+            ]);
+
+            child.stdout.on("data", (data) => {
+              const updatedLogMessage = formatLogMessage(data);
+              logMessage(sendSSE, `✅ ${updatedLogMessage}`);
+            });
+
+            child.stderr.on("data", (data) => {
+              const updatedLogMessage = formatLogMessage(data);
+              logMessage(sendSSE, `❌ ${updatedLogMessage}`);
+            });
+
+            // Wait for the process to complete
+            await new Promise((resolve, reject) => {
+              child.on("close", (code) => {
+                if (code === 0) resolve();
+                else reject(new Error(`Process exited with code ${code}`));
+              });
+            });
+
+            // After successful pull
             completedFiles++;
-            sendSSE({
-              status: "progress",
-              total: fileCount,
-              completed: completedFiles,
-              percentage: Math.round((completedFiles / fileCount) * 100),
-              currentFolder: directory,
-            });
-            continue;
+            logMessage(sendSSE, `Pulled file: ${itemName}`);
+          } catch (error) {
+            logMessage(
+              sendSSE,
+              `❌ Error pulling ${itemName}: ${error.message}`
+            );
           }
-          totalFiles++;
-
-          // Use spawn instead of execSync to get real-time output
-          const child = spawn("adb", [
-            "pull",
-            `${escapedDirectory}/${itemName}`,
-            normalizedOutputDir,
-          ]);
-
-          child.stdout.on("data", (data) => {
-            const logMessage = data.toString().trim();
-            // Use regex to extract the byte count and convert it to MB or KB
-            const updatedLogMessage = logMessage.replace(
-              /(\d+) bytes/,
-              (match, p1) => {
-                const bytes = parseInt(p1, 10);
-                let size;
-                if (bytes < 1024) {
-                  size = `${bytes} bytes`; // Display in bytes if less than 1 KB
-                } else if (bytes < 1024 * 1024) {
-                  const kilobytes = (bytes / 1024).toFixed(2); // Convert to KB and round to 2 decimal places
-                  size = `${kilobytes} KB`;
-                } else {
-                  const megabytes = (bytes / (1024 * 1024)).toFixed(1); // Convert to MB and round to 1 decimal place
-                  size = `${megabytes} MB`;
-                }
-                return size; // Replace with the formatted size value
-              }
-            );
-            sendSSE({
-              status: "log",
-              message: `✅ ${updatedLogMessage}`,
-            });
-          });
-
-          child.stderr.on("data", (data) => {
-            const logMessage = data.toString().trim();
-            // Use regex to extract the byte count and convert it to MB or KB
-            const updatedLogMessage = logMessage.replace(
-              /(\d+) bytes/,
-              (match, p1) => {
-                const bytes = parseInt(p1, 10);
-                let size;
-                if (bytes < 1024) {
-                  size = `${bytes} bytes`; // Display in bytes if less than 1 KB
-                } else if (bytes < 1024 * 1024) {
-                  const kilobytes = (bytes / 1024).toFixed(2); // Convert to KB and round to 2 decimal places
-                  size = `${kilobytes} KB`;
-                } else {
-                  const megabytes = (bytes / (1024 * 1024)).toFixed(1); // Convert to MB and round to 1 decimal place
-                  size = `${megabytes} MB`;
-                }
-                return size; // Replace with the formatted size value
-              }
-            );
-            sendSSE({
-              status: "log",
-              message: `✅ ${updatedLogMessage}`,
-            });
-          });
-
-          // Wait for the process to complete
-          await new Promise((resolve, reject) => {
-            child.on("close", (code) => {
-              if (code === 0) resolve();
-              else reject(new Error(`Process exited with code ${code}`));
-            });
-          });
-
-          // After successful pull
-          completedFiles++;
-          sendSSE({
-            status: "progress",
-            total: fileCount,
-            completed: completedFiles,
-            percentage: Math.round((completedFiles / fileCount) * 100),
-            currentFolder: directory,
-          });
-        } catch (error) {
-          sendSSE({
-            status: "log",
-            message: `❌ Error pulling ${itemName}: ${error.message}`,
-          });
         }
-      }
-    }
+      })
+    );
 
     return {
       completed: true,
@@ -223,10 +184,7 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
       totalFiles,
     };
   } catch (e) {
-    sendSSE({
-      status: "log",
-      message: `❌ Error: ${e.message}`,
-    });
+    logMessage(sendSSE, `❌ Error: ${e.message}`);
 
     if (e.message.includes("device unauthorized")) {
       return {
@@ -242,7 +200,15 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
   }
 }
 
-// Modify the backup function to remove adb-kit usage
+// Helper function to create a directory and send log message
+async function createDirectory(dirPath, sendSSE) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+    logMessage(sendSSE, `📁 Creating directory: ${dirPath}`);
+  }
+}
+
+// Update the backup function
 async function backup(sendSSE, backupOptions, destinationPath) {
   const startTime = new Date();
   let totalStats = {
@@ -252,27 +218,7 @@ async function backup(sendSSE, backupOptions, destinationPath) {
   };
 
   let destPathWindows = destinationPath.trim();
-
-  // Ensure the destination path ends with a single backslash
-  if (!destPathWindows.endsWith("\\")) {
-    destPathWindows += "\\";
-  }
-
-  // Create directories if they don't exist
-  try {
-    if (!fs.existsSync(destPathWindows)) {
-      fs.mkdirSync(destPathWindows, { recursive: true });
-    }
-  } catch (error) {
-    console.error(
-      `Error creating directory ${destPathWindows}:`,
-      error.message
-    );
-    return {
-      completed: false,
-      message: `Error creating directory ${destPathWindows}.`,
-    };
-  }
+  await createDirectory(destPathWindows, sendSSE); // Create destination directory
 
   try {
     for (const location of backupSrcs.filter(
@@ -280,19 +226,11 @@ async function backup(sendSSE, backupOptions, destinationPath) {
     )) {
       const { src, dest } = location;
 
-      // check year folder exists
       const yearFolder = `${destPathWindows}${generateDate()}\\`;
-      if (!fs.existsSync(yearFolder)) {
-        fs.mkdirSync(yearFolder, { recursive: true });
-        sendSSE({
-          status: "log",
-          message: `📁 Creating Year directory because it doesn't exist: ${yearFolder}`,
-        });
-      }
+      await createDirectory(yearFolder, sendSSE); // Create year folder
 
       const outputDir = `${yearFolder}${dest}\\`;
-
-      fs.mkdirSync(outputDir, { recursive: true });
+      await createDirectory(outputDir, sendSSE); // Create output directory
 
       const result = await pullFilesRecursively(sendSSE, src, outputDir);
       if (!result.completed) {
@@ -329,7 +267,7 @@ async function backup(sendSSE, backupOptions, destinationPath) {
   } catch (error) {
     return {
       completed: false,
-      message: error.message,
+      message: `Error: ${error.message}`,
       skipped: totalStats.skipped,
       totalFiles: totalStats.files,
     };

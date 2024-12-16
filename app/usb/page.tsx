@@ -28,52 +28,62 @@ const Page = () => {
 
   const requestFileTransferPermission = async () => {
     if (device) {
-      // Ensure the device is opened before accessing its configuration
       if (device.opened) {
-        console.log("Device object:", device);
         console.log("Device configuration:", device.configuration);
-        console.log("Device interfaces:", device.configuration?.interfaces);
+        console.log("Device interfaces:", device.configuration.interfaces);
 
         const interfaceIndex = 0; // Change this if necessary based on your device
         try {
-          // Check if the interface is available
-          const interfaces = device.configuration?.interfaces;
-          if (interfaces && interfaces.length > interfaceIndex) {
-            const currentInterface = interfaces[interfaceIndex];
-            console.log("Current interface:", currentInterface);
+          const currentInterface =
+            device.configuration.interfaces[interfaceIndex];
+          console.log("Current interface:", currentInterface);
 
-            if (!currentInterface.claimed) {
-              console.log(`Claiming interface ${interfaceIndex}...`);
-              await device.claimInterface(interfaceIndex);
-              console.log(`Interface ${interfaceIndex} claimed successfully.`);
-            } else {
-              console.error(`Interface ${interfaceIndex} is already claimed.`);
-            }
+          // Check if the interface is already claimed
+          if (!currentInterface.claimed) {
+            console.log(`Claiming interface ${interfaceIndex}...`);
+            await device.claimInterface(interfaceIndex);
+            console.log(`Interface ${interfaceIndex} claimed successfully.`);
+          } else {
+            console.error(`Interface ${interfaceIndex} is already claimed.`);
+          }
 
-            // Now that the interface is claimed, select the alternate interface if available
-            const alternateInterface = currentInterface.alternate;
-            if (alternateInterface) {
-              console.log(
-                `Selecting alternate interface for index ${interfaceIndex}:`,
-                alternateInterface
-              );
-              await device.selectAlternateInterface(
-                interfaceIndex,
-                alternateInterface.alternateSetting
-              );
-              console.log(
-                `Alternate interface for index ${interfaceIndex} selected successfully.`
-              );
-            } else {
-              console.error(
-                `No alternate interface available for index ${interfaceIndex}.`
-              );
-            }
+          // Now that the interface is claimed, select the alternate interface if available
+          if (currentInterface.alternates.length > 0) {
+            console.log(
+              `Selecting alternate interface for index ${interfaceIndex}...`
+            );
+            await device.selectAlternateInterface(
+              interfaceIndex,
+              currentInterface.alternates[0].alternateSetting
+            );
+            console.log(
+              `Alternate interface for index ${interfaceIndex} selected successfully.`
+            );
           } else {
             console.error(
-              `Interface index ${interfaceIndex} is out of bounds or interfaces are not available.`
+              `No alternate interface available for index ${interfaceIndex}.`
             );
           }
+
+          // Access the endpoints for the claimed interface
+          const endpoints = currentInterface.alternates[0].endpoints; // Access the first alternate interface
+          console.log("Endpoints for the current interface:", endpoints);
+
+          // Choose an endpoint for transferIn
+          const endpointNumber = 1; // Use endpoint 1 (bulk) or 2 (interrupt) based on your needs
+          const length = 512; // Use the packet size for bulk or adjust for interrupt
+
+          console.log(
+            `Using endpoint number: ${endpointNumber} with length: ${length}`
+          );
+
+          // Perform the transferIn operation
+          const response = await device.transferIn(endpointNumber, length);
+          console.log("Transfer response:", response);
+
+          // Process the response data
+          const data = new Uint8Array(response.data.buffer);
+          console.log("Received data:", data);
         } catch (error) {
           console.error("Error during interface operations:", error);
           if (error.name === "InvalidStateError") {
@@ -84,6 +94,8 @@ const Page = () => {
             console.error("The specified interface was not found.");
           } else if (error.name === "NotAllowedError") {
             console.error("Permission to access the device was denied.");
+          } else {
+            console.error("An unexpected error occurred:", error);
           }
         }
       } else {

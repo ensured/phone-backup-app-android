@@ -36,7 +36,7 @@ const Header = () => {
     <header
       className={`flex items-center justify-between p-4 text-foreground bg--background shadow-md shadow-border`}
     >
-      <Link
+      {/* <Link
         href="/usb"
         className="hover:text-purple-700 dark:hover:text-purple-700 transition-colors duration-200"
       >
@@ -48,7 +48,7 @@ const Header = () => {
         >
           web USB
         </h1>
-      </Link>
+      </Link> */}
       <Link
         href="/"
         className="hover:text-purple-700 dark:hover:text-purple-700 transition-colors duration-200"
