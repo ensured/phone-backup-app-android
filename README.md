@@ -1,5 +1,6 @@
 
-![7x7B1Of](https://github.com/user-attachments/assets/ef65fa64-2152-4002-8a8e-208867fb469a)
+![JgeYAUM](https://github.com/user-attachments/assets/20040450-da8b-46e7-9a51-fba8455586ec)
+
 ## ADB Platform-Tools Setup Instructions
 
 Make sure you download the [ADB platform-tools zip](https://dl.google.com/android/repository/platform-tools-latest-windows.zip) and follow these steps:
