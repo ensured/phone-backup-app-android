@@ -1,4 +1,5 @@
-![odqeV8F](https://github.com/user-attachments/assets/788f1899-ade9-4594-b5b5-63f23b54c31e)
+
+![7x7B1Of](https://github.com/user-attachments/assets/ef65fa64-2152-4002-8a8e-208867fb469a)
 ## ADB Platform-Tools Setup Instructions
 
 Make sure you download the [ADB platform-tools zip](https://dl.google.com/android/repository/platform-tools-latest-windows.zip) and follow these steps:
