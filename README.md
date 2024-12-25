@@ -1,5 +1,6 @@
 
-![JgeYAUM](https://github.com/user-attachments/assets/20040450-da8b-46e7-9a51-fba8455586ec)
+![Vztdb33](https://github.com/user-attachments/assets/839c40b6-5081-441e-97c8-564648bd3a7e)
+
 
 ## ADB Platform-Tools Setup Instructions
 
