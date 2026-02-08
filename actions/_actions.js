@@ -368,3 +368,81 @@ export async function estimateBackupSize(backupOptions) {
     };
   }
 }
+
+// Get device storage information using ADB
+export async function getDeviceStorage() {
+  try {
+    // Use df command to get storage info
+    console.log("Fetching device storage...");
+    const output = await executeAdbCommand(getAdbPath(), [
+      "shell",
+      "df",
+      "/storage/emulated/0",
+    ]);
+
+    console.log("df output:", output);
+
+    // Parse df output (format: Filesystem 1K-blocks Used Available Use% Mounted on)
+    const lines = output.trim().split("\n");
+
+    // Skip header line and find the line with /storage/emulated
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.includes("/storage/emulated") || line.includes("/data")) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 6) {
+          const totalBytes = parseInt(parts[1], 10) * 1024; // 1K-blocks to bytes
+          const usedBytes = parseInt(parts[2], 10) * 1024;
+          const availableBytes = parseInt(parts[3], 10) * 1024;
+          const usedPercent = parts[4];
+
+          return {
+            success: true,
+            total: formatBytes(totalBytes),
+            used: formatBytes(usedBytes),
+            available: formatBytes(availableBytes),
+            usedPercent,
+          };
+        }
+      }
+    }
+
+    // If parsing failed, try with -h flag
+    const outputH = await executeAdbCommand(getAdbPath(), [
+      "shell",
+      "df",
+      "-h",
+      "/storage/emulated",
+    ]);
+
+    console.log("df -h output:", outputH);
+    const linesH = outputH.trim().split("\n");
+
+    for (let i = 1; i < linesH.length; i++) {
+      const line = linesH[i];
+      if (line.includes("/storage/emulated") || line.includes("/data")) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 6) {
+          return {
+            success: true,
+            total: parts[1],
+            used: parts[2],
+            available: parts[3],
+            usedPercent: parts[4],
+          };
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: "Could not parse storage information",
+    };
+  } catch (error) {
+    console.error("Error getting device storage:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to execute ADB command",
+    };
+  }
+}

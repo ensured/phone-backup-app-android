@@ -6,6 +6,7 @@ import {
   getFoldersInDirectory,
   deletePath,
   estimateBackupSize,
+  getDeviceStorage,
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,6 +79,7 @@ export default function Backup({ success, deviceID }) {
   });
   const [sizeEstimate, setSizeEstimate] = useState(null);
   const [isEstimating, setIsEstimating] = useState(false);
+  const [deviceStorage, setDeviceStorage] = useState(null);
   const [isToastVisible, setIsToastVisible] = useState(false);
 
   const [output, setOutput] = useState("");
@@ -295,6 +297,27 @@ export default function Backup({ success, deviceID }) {
   useEffect(() => {
     if (deviceId && !backupStarted && !sizeEstimate) {
       updateSizeEstimate();
+    }
+  }, [deviceId]);
+
+  // Function to fetch device storage
+  const fetchDeviceStorage = async () => {
+    if (!deviceId) return;
+
+    try {
+      const result = await getDeviceStorage();
+      if (result.success) {
+        setDeviceStorage(result);
+      }
+    } catch (error) {
+      console.error("Error fetching device storage:", error);
+    }
+  };
+
+  // Fetch device storage when device connects
+  useEffect(() => {
+    if (deviceId) {
+      fetchDeviceStorage();
     }
   }, [deviceId]);
 
@@ -650,6 +673,27 @@ export default function Backup({ success, deviceID }) {
             <CardTitle className="text-xl font-semibold text-center select-none">
               Phone Backup
             </CardTitle>
+            {/* Device Storage Info */}
+            {deviceId && (
+              <div className="mt-2 text-center">
+                {deviceStorage?.success ? (
+                  <div className="text-xs text-muted-foreground inline-flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md">
+                    <span className="font-medium text-foreground">
+                      {deviceStorage.used}
+                    </span>
+                    <span className="text-muted-foreground">/</span>
+                    <span>{deviceStorage.total}</span>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({deviceStorage.usedPercent} used)
+                    </span>
+                  </div>
+                ) : deviceStorage?.error ? (
+                  <span className="text-xs text-red-500">Storage error: {deviceStorage.error}</span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Loading storage...</span>
+                )}
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <form className="space-y-6">
