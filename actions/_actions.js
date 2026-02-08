@@ -2,6 +2,23 @@
 import Adb from "@devicefarmer/adbkit";
 import { execSync, spawn } from "child_process";
 import fs from "fs";
+import path from "path";
+
+// Backup source paths configuration
+const BACKUP_SOURCES = [
+  { src: "/storage/emulated/0/DCIM/Camera", key: "Camera" },
+  { src: "/storage/emulated/0/Download", key: "Download" },
+  { src: "/storage/emulated/0/Pictures", key: "Pictures" },
+];
+
+// Helper to get ADB path - uses C:\adb if available, otherwise falls back to 'adb' in PATH
+function getAdbPath() {
+  const adbPath = 'C:\\adb\\adb.exe';
+  if (fs.existsSync(adbPath)) {
+    return adbPath;
+  }
+  return 'adb';
+}
 
 // Replace execSync with spawn for adb commands
 function executeAdbCommand(command, args) {
@@ -48,7 +65,7 @@ export async function deleteSources(backupOptions) {
 
   if (backupOptions.Camera) {
     try {
-      const directories = await executeAdbCommand("adb", [
+      const directories = await executeAdbCommand(getAdbPath(), [
         "shell",
         "ls",
         "/storage/emulated/0/",
@@ -59,7 +76,7 @@ export async function deleteSources(backupOptions) {
       if (folders.length === 0) {
         emptyStatus.Camera = "The Camera directory does not exist.";
       } else {
-        await executeAdbCommand("adb", [
+        await executeAdbCommand(getAdbPath(), [
           "shell",
           "rm",
           "-rf",
@@ -80,7 +97,7 @@ export async function deleteSources(backupOptions) {
   if (backupOptions.Download) {
     try {
       // Check if the Download directory exists
-      const directories = await executeAdbCommand("adb", [
+      const directories = await executeAdbCommand(getAdbPath(), [
         "shell",
         "ls",
         "/storage/emulated/0/",
@@ -90,7 +107,7 @@ export async function deleteSources(backupOptions) {
 
       if (folders.length === 0) {
         // create the folder if it doesn't exist
-        await executeAdbCommand("adb", [
+        await executeAdbCommand(getAdbPath(), [
           "shell",
           "mkdir",
           "/storage/emulated/0/Download",
@@ -100,7 +117,7 @@ export async function deleteSources(backupOptions) {
         emptyStatus.Download = "The Download directory was not empty.";
       }
 
-      await executeAdbCommand("adb", [
+      await executeAdbCommand(getAdbPath(), [
         "shell",
         "rm",
         "-rf",
@@ -120,7 +137,7 @@ export async function deleteSources(backupOptions) {
   if (backupOptions.Pictures) {
     try {
       // Check if the Pictures directory is empty (including all subdirectories)
-      const output = await executeAdbCommand("adb", [
+      const output = await executeAdbCommand(getAdbPath(), [
         "shell",
         "find",
         "/storage/emulated/0/Pictures",
@@ -135,7 +152,7 @@ export async function deleteSources(backupOptions) {
         emptyStatus.Pictures = "The Pictures directory was not empty.";
       }
 
-      await executeAdbCommand("adb", [
+      await executeAdbCommand(getAdbPath(), [
         "shell",
         "rm",
         "-rf",
@@ -247,13 +264,13 @@ async function getDevice() {
 export async function startAdbServer() {
   try {
     // Start the adb server and suppress the output
-    execSync("adb -P 5037 start-server", { stdio: "ignore" });
+    execSync(`${getAdbPath()} -P 5037 start-server`, { stdio: "ignore" });
 
     // Removed retry logic
     try {
       // Log attempt to check the adb state
 
-      const output = execSync("adb get-state", { stdio: "pipe" })
+      const output = execSync(`${getAdbPath()} get-state`, { stdio: "pipe" })
         .toString()
         .trim();
 
@@ -283,6 +300,71 @@ export async function startAdbServer() {
     return {
       success: false,
       error: `Failed to start ADB server: ${error.message}`,
+    };
+  }
+}
+
+// Helper to format bytes to human readable size
+function formatBytes(bytes) {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+// Get size of a directory using adb shell
+async function getDirectorySize(srcPath) {
+  try {
+    // Use du -sb to get total bytes in directory
+    const output = await executeAdbCommand(getAdbPath(), [
+      "shell",
+      "du",
+      "-sb",
+      srcPath,
+    ]);
+    // Parse the size from output (format: "12345 /path/to/dir")
+    const match = output.trim().match(/^(\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  } catch (error) {
+    console.error(`Error getting size for ${srcPath}:`, error);
+    return 0;
+  }
+}
+
+export async function estimateBackupSize(backupOptions) {
+  try {
+    let totalSize = 0;
+    const selectedSources = [];
+
+    // Calculate size for each selected source
+    for (const source of BACKUP_SOURCES) {
+      if (backupOptions[source.key]) {
+        const size = await getDirectorySize(source.src);
+        totalSize += size;
+        selectedSources.push({
+          key: source.key,
+          src: source.src,
+          size: size,
+          formattedSize: formatBytes(size),
+        });
+      }
+    }
+
+    return {
+      success: true,
+      totalBytes: totalSize,
+      formattedSize: formatBytes(totalSize),
+      sources: selectedSources,
+    };
+  } catch (error) {
+    console.error("Error estimating backup size:", error);
+    return {
+      success: false,
+      error: error.message,
+      totalBytes: 0,
+      formattedSize: "0 B",
+      sources: [],
     };
   }
 }

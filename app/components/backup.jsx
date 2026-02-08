@@ -5,6 +5,7 @@ import {
   getDeviceStatus,
   getFoldersInDirectory,
   deletePath,
+  estimateBackupSize,
 } from "../../actions/_actions";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,6 +76,8 @@ export default function Backup({ success, deviceID }) {
     Pictures: true,
     destInputValue: "",
   });
+  const [sizeEstimate, setSizeEstimate] = useState(null);
+  const [isEstimating, setIsEstimating] = useState(false);
   const [isToastVisible, setIsToastVisible] = useState(false);
 
   const [output, setOutput] = useState("");
@@ -259,6 +262,41 @@ export default function Backup({ success, deviceID }) {
   const handleBackupOptionsChange = (updatedOptions) => {
     setBackupOptions(updatedOptions);
   };
+
+  // Function to update size estimate
+  const updateSizeEstimate = async () => {
+    if (!deviceId) return;
+
+    setIsEstimating(true);
+    try {
+      const result = await estimateBackupSize(backupOptions);
+      if (result.success) {
+        setSizeEstimate(result);
+      }
+    } catch (error) {
+      console.error("Error estimating size:", error);
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
+  // Update size estimate when backup options change
+  useEffect(() => {
+    if (deviceId && !backupStarted) {
+      const timeoutId = setTimeout(() => {
+        updateSizeEstimate();
+      }, 500); // Debounce for 500ms
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [backupOptions.Camera, backupOptions.Download, backupOptions.Pictures, deviceId]);
+
+  // Initial size estimate when device connects
+  useEffect(() => {
+    if (deviceId && !backupStarted && !sizeEstimate) {
+      updateSizeEstimate();
+    }
+  }, [deviceId]);
 
   const startBackup = async () => {
     setBackupStarted(true);
@@ -622,6 +660,23 @@ export default function Backup({ success, deviceID }) {
                       options={backupOptions}
                       onChange={handleBackupOptionsChange}
                     />
+                    {/* Size Estimate Display */}
+                    {deviceId && (
+                      <div className="mt-2 pt-2 border-t border-border">
+                        <div className="text-xs text-muted-foreground flex items-center justify-between">
+                          <span>Size:</span>
+                          {isEstimating ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : sizeEstimate ? (
+                            <span className="font-medium text-primary">
+                              ~{sizeEstimate.formattedSize}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">--</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-4 bg-secondary/30 rounded-md p-1.5 max-h-[120.56px] overflow-y-auto">
                     <div className="flex items-center justify-between gap-2 text-md text-muted-foreground">
