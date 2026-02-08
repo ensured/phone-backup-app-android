@@ -49,6 +49,10 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "../../components/ui/alert-dialog";
+import StorageInfo from "./backup/StorageInfo";
+import BackupOptionsPanel from "./backup/BackupOptionsPanel";
+import DestinationPanel from "./backup/DestinationPanel";
+import OutputLog from "./backup/OutputLog";
 
 let socket;
 
@@ -568,9 +572,17 @@ export default function Backup({ success, deviceID }) {
     }
 
     setSelectPathsAvailable(directories);
-    selectRef.current.focus(); // Focus the select element
+    selectRef.current?.focus();
     localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
     setLoadingSelectPaths(false);
+  };
+
+  const handleSelectChange = (e) => {
+    if (backupOptions.destInputValue.endsWith("\\")) {
+      backupOptions.destInputValue += e.target.value;
+    } else {
+      backupOptions.destInputValue += "\\" + e.target.value;
+    }
   };
 
   const showToast = (content) => {
@@ -673,251 +685,40 @@ export default function Backup({ success, deviceID }) {
             <CardTitle className="text-xl font-semibold text-center select-none">
               Phone Backup
             </CardTitle>
-            {/* Device Storage Info */}
-            {deviceId && (
-              <div className="mt-2 text-center">
-                {deviceStorage?.success ? (
-                  <div className="text-xs text-muted-foreground inline-flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-md">
-                    <span className="font-medium text-foreground">
-                      {deviceStorage.used}
-                    </span>
-                    <span className="text-muted-foreground">/</span>
-                    <span>{deviceStorage.total}</span>
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({deviceStorage.usedPercent} used)
-                    </span>
-                  </div>
-                ) : deviceStorage?.error ? (
-                  <span className="text-xs text-red-500">Storage error: {deviceStorage.error}</span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Loading storage...</span>
-                )}
-              </div>
-            )}
+            {deviceId && <StorageInfo deviceStorage={deviceStorage} />}
           </CardHeader>
           <CardContent>
             <form className="space-y-6">
               {!backupStarted ? (
                 <div className="grid grid-cols-6 gap-x-1.5 gap-y-4">
-                  <div className="col-span-2 bg-secondary/30 rounded-md p-1.5">
-                    <BackupOption
-                      options={backupOptions}
-                      onChange={handleBackupOptionsChange}
-                    />
-                    {/* Size Estimate Display */}
-                    {deviceId && (
-                      <div className="mt-2 pt-2 border-t border-border">
-                        <div className="text-xs text-muted-foreground flex items-center justify-between">
-                          <span>Size:</span>
-                          {isEstimating ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : sizeEstimate ? (
-                            <span className="font-medium text-primary">
-                              ~{sizeEstimate.formattedSize}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">--</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-span-4 bg-secondary/30 rounded-md p-1.5 max-h-[120.56px] overflow-y-auto">
-                    <div className="flex items-center justify-between gap-2 text-md text-muted-foreground">
-                      Destination
-                      <div
-                        className="flex items-center justify-center gap-1 hover:cursor-pointer duration-200 hover:text-primary "
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleRefreshDrives();
-                        }}
-                      >
-                        <span className="text-xs">Refresh</span>
-                        <RefreshCcw
-                          className={`size-3.5 hover:cursor-pointer hover:text-primary `}
-                          variant={"ghost"}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 mt-1.5 gap-1.5">
-                      {loadingPaths ? (
-                        <div className="flex items-center justify-center w-full col-span-2">
-                          <Loader2 className="size-6 animate-spin" />
-                        </div>
-                      ) : (
-                        drives.length > 0 &&
-                        drives.map((drive) => (
-                          <div
-                            key={drive.letter}
-                            className="flex items-center space-x-2 bg-secondary/50 rounded-md p-1.5 hover:bg-secondary"
-                          >
-                            <Checkbox
-                              id={drive.letter}
-                              checked={checkedDrive === drive.letter}
-                              onCheckedChange={() =>
-                                handleDriveCheckboxChange(drive.letter)
-                              }
-                              className="size-5 border border-gray-300 rounded-sm"
-                            />
-                            <label
-                              htmlFor={drive.letter}
-                              className="text-md font-medium cursor-pointer flex items-center justify-between"
-                            >
-                              <span className="font-bold">
-                                {drive.letter.replace(":", "")}
-                              </span>
-                              {drive.name && (
-                                <span className="text-muted-foreground ml-1 text-xs">
-                                  ({drive.name})
-                                </span>
-                              )}
-                            </label>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="w-full col-span-6 space-y-1">
-                    {loadingSelectPaths ? (
-                      <Skeleton className="relative w-full h-9 border border-primary">
-                        <Loader2 className="absolute w-full h-full animate-spin flex items-center justify-center" />
-                      </Skeleton>
-                    ) : (
-                      <div className="flex flex-row items-center gap-1">
-                        <Input
-                          ref={inputRef}
-                          autoComplete="true"
-                          onChange={handleDestInputChange}
-                          type="text"
-                          disabled={!checkedDrive}
-                          value={backupOptions.destInputValue}
-                          className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex flex-row items-center gap-1">
-                      <select
-                        disabled={
-                          !checkedDrive || !backupOptions.destInputValue
-                        }
-                        onClick={handlePathsSelectClick}
-                        ref={selectRef}
-                        className="border w-full border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 text-sm focus:ring-primary hover:cursor-pointer"
-                        onChange={(e) => {
-                          if (backupOptions.destInputValue.endsWith("\\")) {
-                            backupOptions.destInputValue += e.target.value;
-                          } else {
-                            backupOptions.destInputValue +=
-                              "\\" + e.target.value;
-                          }
-                        }}
-                      >
-                        <option value="">Select a folder</option>
-                        {selectPathsAvailable.map((path) => (
-                          <option
-                            key={path}
-                            value={path}
-                            className="text-lg w-full"
-                          >
-                            {path}
-                          </option>
-                        ))}
-                      </select>
-
-                      <div
-                        className={`flex items-center gap-1 ${backupOptions.destInputValue.length === 3 ||
-                          backupOptions.destInputValue === ""
-                          ? "cursor-not-allowed"
-                          : ""
-                          }`}
-                      >
-                        <Dialog open={open} onOpenChange={setOpen}>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              disabled={
-                                backupOptions.destInputValue.length === 3 ||
-                                backupOptions.destInputValue === "" ||
-                                isRootDrive
-                              }
-                              className="p-2 text-red-500 rounded-md hover:bg-destructive hover:cursor"
-                            >
-                              <Trash2Icon className="size-5" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogTitle>
-                              <VisuallyHidden>nice</VisuallyHidden>
-                            </DialogTitle>
-                            <DialogHeader>
-                              <DialogDescription>
-                                <VisuallyHidden>nice</VisuallyHidden>
-                              </DialogDescription>
-                              <div className="flex flex-col justify-center items-center gap-6 pb-3">
-                                <Button
-                                  variant="destructive"
-                                  onClick={(e) => {
-                                    handleClearInput();
-                                    setOpen(false);
-                                  }}
-                                >
-                                  Clear input
-                                </Button>
-
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="destructive">
-                                      Delete path and all contents
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>
-                                        Confirm Deletion
-                                      </AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete this
-                                        path and all its contents? This action
-                                        cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogCancel
-                                      onClick={() => setOpen(false)}
-                                    >
-                                      Cancel
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => {
-                                        handleDeletePath();
-                                        setOpen(false);
-                                      }}
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </DialogHeader>
-                          </DialogContent>
-                        </Dialog>
-
-                        <Button
-                          variant="outline"
-                          disabled={
-                            backupOptions.destInputValue.length === 3 ||
-                            backupOptions.destInputValue === ""
-                          }
-                          onClick={handleNavBackAFolder}
-                          className="p-2 text-gray-500 rounded-md"
-                        >
-                          <ArrowBigLeft className="size-6" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <BackupOptionsPanel
+                    deviceId={deviceId}
+                    backupOptions={backupOptions}
+                    onOptionsChange={handleBackupOptionsChange}
+                    sizeEstimate={sizeEstimate}
+                    isEstimating={isEstimating}
+                  />
+                  <DestinationPanel
+                    loadingPaths={loadingPaths}
+                    drives={drives}
+                    checkedDrive={checkedDrive}
+                    onDriveChange={handleDriveCheckboxChange}
+                    onRefreshDrives={handleRefreshDrives}
+                    loadingSelectPaths={loadingSelectPaths}
+                    backupOptions={backupOptions}
+                    onDestInputChange={handleDestInputChange}
+                    onPathsSelectClick={handlePathsSelectClick}
+                    selectPathsAvailable={selectPathsAvailable}
+                    onSelectChange={handleSelectChange}
+                    isRootDrive={isRootDrive}
+                    onClearInput={handleClearInput}
+                    onNavBack={handleNavBackAFolder}
+                    onDeletePath={handleDeletePath}
+                    open={open}
+                    setOpen={setOpen}
+                    inputRef={inputRef}
+                    selectRef={selectRef}
+                  />
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -949,145 +750,31 @@ export default function Backup({ success, deviceID }) {
         </Card>
       )}
 
-      {/* output streamed content */}
       {output.trim().length > 0 && backupStarted && (
-        <div className="mt-2 sm:w-[92%] w-[90%] lg:max-w-[64rem] mx-auto bg-secondary/30 rounded-md relative border border-border">
-          <>
-            <div className="relative top-0 left-0 w-full px-6 py-2 shadow-md ">
-              <div className="w-full flex items-center justify-between text-muted-foreground">
-                <div className="flex-grow text-center">
-                  <span className="text-lg font-semibold">
-                    {progress.completed} / {progress.total} files{" "}
-                    <b className="text-primary">{progress.percentage}%</b>
-                  </span>
-                </div>
-                <span className="px-3 py-1 bg-secondary/50 text-xs flex items-center gap-0.5">
-                  {currentFolder.replace("/storage/emulated/0", "")}
-                  <Loader2 className="size-3 animate-spin" />{" "}
-                </span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-2 mt-2">
-                <div
-                  className="bg-primary/90 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${progress.percentage}%` }}
-                ></div>
-              </div>
-              {/* Display current folder name */}
-            </div>
-
-            <div
-              ref={outputRef}
-              onScroll={handleScroll}
-              className={`${backupStarted ? "mt-[9px]" : ""
-                } h-[18rem] max-w-[64rem] w-full overflow-auto relative`}
-            >
-              {output
-                .trim()
-                .split("\n")
-                .map((line, index) => (
-                  <div
-                    key={index}
-                    className={`log-message ${index % 2 === 0 ? "even" : "odd"
-                      } relative select-text hover:bg-secondary/50`}
-                    onMouseEnter={(e) => {
-                      setHoveredLine(line);
-                      setMousePosition({
-                        x: e.clientX,
-                        y: e.clientY - 25, // Position slightly above cursor
-                      });
-                    }}
-                    onMouseMove={(e) => {
-                      setMousePosition({
-                        x: e.clientX,
-                        y: e.clientY - 25,
-                      });
-                    }}
-                    onMouseLeave={() => {
-                      setHoveredLine(null);
-                    }}
-                    onClick={async () => {
-                      const success = await copyToClipboard(line);
-                      if (success) {
-                        toast({
-                          variant: "success",
-                          title: (
-                            <div className="flex items-center gap-2">
-                              Copied to clipboard
-                              <Check className="h-4 w-4 text-green-500" />
-                            </div>
-                          ),
-                          duration: 2000,
-                        });
-                      }
-                    }}
-                  >
-                    <span className="flex flex-wrap break-all p-0.5">
-                      {line}
-                    </span>
-                    {hoveredLine === line && (
-                      <div
-                        className="fixed z-50 bg-popover text-popover-foreground px-2 py-1 text-xs shadow-md pointer-events-none"
-                        style={{
-                          left: `${mousePosition.x}px`,
-                          top: `${mousePosition.y}px`,
-                          transform: "translate(-50%, -100%)",
-                        }}
-                      >
-                        Click to copy
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </div>
-
-            <div className="sticky bottom-0 w-full flex justify-end gap-1 p-2 bg-background/80 backdrop-blur-sm rounded-md">
-              <div className="relative">
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className={`absolute right-0 transition-opacity duration-200 ${scrollPercentage > 50
-                    ? "opacity-100"
-                    : "opacity-0 pointer-events-none"
-                    }`}
-                  onClick={() => {
-                    outputRef.current?.scrollTo({
-                      top: 0,
-                      behavior: "smooth",
-                    });
-                  }}
-                >
-                  <ArrowBigUp className="size-8" />
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className={`absolute right-0 transition-opacity duration-200 ${scrollPercentage <= 50 &&
-                    outputRef.current?.scrollHeight >
-                    outputRef.current?.clientHeight
-                    ? "opacity-100"
-                    : "opacity-0 pointer-events-none"
-                    }`}
-                  onClick={() => {
-                    outputRef.current?.scrollTo({
-                      top: outputRef.current.scrollHeight,
-                      behavior: "smooth",
-                    });
-                  }}
-                >
-                  <ArrowBigDown className="size-8" />
-                </Button>
-              </div>
-              <Button
-                variant="secondary"
-                className="flex items-center gap-2"
-                onClick={copyAllLogs}
-              >
-                <Copy className="size-5" />
-                Copy Logs
-              </Button>
-            </div>
-          </>
-        </div>
+        <OutputLog
+          output={output}
+          progress={progress}
+          currentFolder={currentFolder}
+          backupStarted={backupStarted}
+          scrollPercentage={scrollPercentage}
+          onScroll={handleScroll}
+          hoveredLine={hoveredLine}
+          setHoveredLine={setHoveredLine}
+          mousePosition={mousePosition}
+          setMousePosition={setMousePosition}
+          onCopyLine={async (line) => {
+            const success = await copyToClipboard(line);
+            if (success) {
+              toast({
+                variant: "success",
+                title: <div className="flex items-center gap-2">Copied to clipboard</div>,
+                duration: 2000,
+              });
+            }
+          }}
+          onCopyAllLogs={copyAllLogs}
+          outputRef={outputRef}
+        />
       )}
     </div>
   );
