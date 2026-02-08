@@ -33,6 +33,17 @@ export default async function SocketHandler(req, res) {
     });
   } catch (err) {
     console.error("Error tracking devices:", err);
+    // If ADB is not found, emit a disconnected status and don't try to track devices
+    if (err.code === 'ENOENT' && err.message.includes('spawn adb')) {
+      io.on("connection", (socket) => {
+        console.log("socket client connected");
+        socket.emit("device-status", { status: "adb_not_found" });
+
+        socket.on("disconnect", () => {
+          console.log("socket client disconnected");
+        });
+      });
+    }
   }
 
   io.on("connection", (socket) => {

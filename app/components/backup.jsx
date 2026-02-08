@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import io from "socket.io-client";
 import { DeviceNotConnected } from "@/components/device-not-connected";
+import { AdbNotInstalled } from "@/components/adb-not-installed";
 import BackupOption from "./backupOption";
 import ConfettiExplosion from "./Confetti";
 import CardFooterBackupAndStatus from "./CardFooterBackupAndStatus";
@@ -103,6 +104,7 @@ export default function Backup({ success, deviceID }) {
 
   const [initialLoad, setInitialLoad] = useState(true);
   const [deviceStatusChecked, setDeviceStatusChecked] = useState(false); // New state to track device status check
+  const [adbError, setAdbError] = useState(null); // New state to track ADB installation error
 
   const handleDeletePath = async () => {
     const result = await deletePath(backupOptions.destInputValue);
@@ -156,57 +158,81 @@ export default function Backup({ success, deviceID }) {
       setBackupOptions(storedOptions);
     }
 
-    const fetchDrives = async () => {
-      const drives = await getDrives();
-      setDrives(drives);
+    const initializeApp = async () => {
+      // First check device status, then fetch drives based on the result
+      const deviceStatus = await getDeviceStatus();
+      if (typeof deviceStatus === 'object' && deviceStatus?.error === 'ADB_NOT_FOUND') {
+        setAdbError(deviceStatus);
+        // If ADB is not installed, set empty drives and finish loading
+        setDrives([]);
+        setLoadingPaths(false);
+        setInitialLoad(false);
+      } else if (deviceStatus) {
+        setDeviceId(deviceStatus); // Set the connected deviceId
+        setAdbError(null); // Clear ADB error if device is now connected
+        // Only fetch drives if ADB is available
+        const drives = await getDrives();
+        setDrives(drives);
 
-      // Only set default drive if no destination is set in backupOptions
-      if (!storedOptions?.destInputValue) {
-        const defaultDrive = "C:" + "\\"; // Default drive path
-        setCheckedDrive("C"); // Set the first available drive as default
+        // Only set default drive if no destination is set in backupOptions
+        if (!storedOptions?.destInputValue) {
+          const defaultDrive = "C:" + "\\"; // Default drive path
+          setCheckedDrive("C"); // Set the first available drive as default
 
-        const newBackupOptions = {
-          ...backupOptions,
-          destInputValue: defaultDrive, // Set default drive here
-        };
+          const newBackupOptions = {
+            ...backupOptions,
+            destInputValue: defaultDrive, // Set default drive here
+          };
 
-        setBackupOptions((prev) => ({
-          ...prev,
-          ...newBackupOptions,
-        }));
+          setBackupOptions((prev) => ({
+            ...prev,
+            ...newBackupOptions,
+          }));
 
-        // Save to localStorage to persist the default drive
-        localStorage.setItem("backupOptions", JSON.stringify(newBackupOptions));
-      } else {
-        // Use the saved destination drive if available
-        const driveLetter = storedOptions.destInputValue.slice(0, 2); // Assuming drive letter is 'C:'
-        setCheckedDrive(driveLetter); // Set the checked drive based on saved destination
-      }
-      setLoadingPaths(false);
-      setInitialLoad(false); // Set initialLoad to false after fetching drives
-    };
-
-    fetchDrives();
-
-    const fetchDeviceStatus = async () => {
-      const deviceId = await getDeviceStatus();
-      if (deviceId) {
-        setDeviceId(deviceId); // Set the connected deviceId
+          // Save to localStorage to persist the default drive
+          localStorage.setItem("backupOptions", JSON.stringify(newBackupOptions));
+        } else {
+          // Use the saved destination drive if available
+          const driveLetter = storedOptions.destInputValue.slice(0, 2); // Assuming drive letter is 'C:'
+          setCheckedDrive(driveLetter); // Set the checked drive based on saved destination
+        }
+        setLoadingPaths(false);
+        setInitialLoad(false); // Set initialLoad to false after fetching drives
       }
       setDeviceStatusChecked(true); // Mark device status as checked
     };
-    fetchDeviceStatus();
+
+    initializeApp();
+
+    // Re-check device status every 5 seconds if ADB error was present
+    const intervalId = setInterval(() => {
+      if (adbError) {
+        const checkDeviceStatus = async () => {
+          const deviceStatus = await getDeviceStatus();
+          if (typeof deviceStatus === 'object' && deviceStatus?.error === 'ADB_NOT_FOUND') {
+            setAdbError(deviceStatus);
+          } else if (deviceStatus) {
+            setDeviceId(deviceStatus); // Set the connected deviceId
+            setAdbError(null); // Clear ADB error if device is now connected
+          }
+        };
+        checkDeviceStatus();
+      }
+    }, 5000);
 
     if (io) {
       socketInitializer();
 
       return () => {
+        clearInterval(intervalId);
         if (socket) {
           socket.disconnect();
         }
       };
     }
-  }, []);
+
+    return () => clearInterval(intervalId);
+  }, []); // Remove adbError dependency to prevent infinite loop
 
   useEffect(() => {
     // Update checkedDrive based on destInputValue
@@ -216,6 +242,19 @@ export default function Backup({ success, deviceID }) {
       localStorage.setItem("backupOptions", JSON.stringify(backupOptions));
     }
   }, [backupOptions]); // Listen to destInputValue only
+
+  // Separate effect to handle ADB error changes and fetch drives when ADB becomes available
+  useEffect(() => {
+    if (adbError === null && deviceStatusChecked) {
+      // ADB was just installed or became available, fetch drives
+      const fetchDrivesAfterAdbInstall = async () => {
+        const drives = await getDrives();
+        setDrives(drives);
+        setLoadingPaths(false);
+      };
+      fetchDrivesAfterAdbInstall();
+    }
+  }, [adbError, deviceStatusChecked]);
 
   const handleBackupOptionsChange = (updatedOptions) => {
     setBackupOptions(updatedOptions);
@@ -273,12 +312,12 @@ export default function Backup({ success, deviceID }) {
                           <span>
                             {messages[index]
                               .split("|||")
-                              [subIndex + 1].slice(0, 2)}
+                            [subIndex + 1].slice(0, 2)}
                           </span>
                           <span>
                             {messages[index]
                               .split("|||")
-                              [subIndex + 1].slice(2)}
+                            [subIndex + 1].slice(2)}
                           </span>
                         </div>
                       </div>
@@ -289,9 +328,8 @@ export default function Backup({ success, deviceID }) {
                   return subIndex === 0 || subIndex === 3 ? (
                     <div
                       key={`${index}-${subIndex}`}
-                      className={`pb-2 flex items-center gap-2 text-muted-foreground ${
-                        subIndex === 0 ? "text-lg border-b" : "text-lg"
-                      }`}
+                      className={`pb-2 flex items-center gap-2 text-muted-foreground ${subIndex === 0 ? "text-lg border-b" : "text-lg"
+                        }`}
                     >
                       <span className="text-lg">{msg.slice(0, 2)}</span>
                       <span className="text-lg">{msg.slice(2)}</span>
@@ -561,11 +599,12 @@ export default function Backup({ success, deviceID }) {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center py-6 select-none ${
-        isToastVisible ? "blur-effect" : ""
-      }`}
+      className={`flex flex-col items-center justify-center py-6 select-none ${isToastVisible ? "blur-effect" : ""
+        }`}
     >
-      {!deviceId && !initialLoad && deviceStatusChecked ? (
+      {adbError ? (
+        <AdbNotInstalled />
+      ) : !deviceId && !initialLoad && deviceStatusChecked ? (
         <DeviceNotConnected />
       ) : (
         <Card className="w-full max-w-md shadow-lg rounded-lg border border-gray-300">
@@ -690,12 +729,11 @@ export default function Backup({ success, deviceID }) {
                       </select>
 
                       <div
-                        className={`flex items-center gap-1 ${
-                          backupOptions.destInputValue.length === 3 ||
+                        className={`flex items-center gap-1 ${backupOptions.destInputValue.length === 3 ||
                           backupOptions.destInputValue === ""
-                            ? "cursor-not-allowed"
-                            : ""
-                        }`}
+                          ? "cursor-not-allowed"
+                          : ""
+                          }`}
                       >
                         <Dialog open={open} onOpenChange={setOpen}>
                           <DialogTrigger asChild>
@@ -841,9 +879,8 @@ export default function Backup({ success, deviceID }) {
             <div
               ref={outputRef}
               onScroll={handleScroll}
-              className={`${
-                backupStarted ? "mt-[9px]" : ""
-              } h-[18rem] max-w-[64rem] w-full overflow-auto relative`}
+              className={`${backupStarted ? "mt-[9px]" : ""
+                } h-[18rem] max-w-[64rem] w-full overflow-auto relative`}
             >
               {output
                 .trim()
@@ -851,9 +888,8 @@ export default function Backup({ success, deviceID }) {
                 .map((line, index) => (
                   <div
                     key={index}
-                    className={`log-message ${
-                      index % 2 === 0 ? "even" : "odd"
-                    } relative select-text hover:bg-secondary/50`}
+                    className={`log-message ${index % 2 === 0 ? "even" : "odd"
+                      } relative select-text hover:bg-secondary/50`}
                     onMouseEnter={(e) => {
                       setHoveredLine(line);
                       setMousePosition({
@@ -910,11 +946,10 @@ export default function Backup({ success, deviceID }) {
                 <Button
                   variant="secondary"
                   size="icon"
-                  className={`absolute right-0 transition-opacity duration-200 ${
-                    scrollPercentage > 50
-                      ? "opacity-100"
-                      : "opacity-0 pointer-events-none"
-                  }`}
+                  className={`absolute right-0 transition-opacity duration-200 ${scrollPercentage > 50
+                    ? "opacity-100"
+                    : "opacity-0 pointer-events-none"
+                    }`}
                   onClick={() => {
                     outputRef.current?.scrollTo({
                       top: 0,
@@ -927,13 +962,12 @@ export default function Backup({ success, deviceID }) {
                 <Button
                   variant="secondary"
                   size="icon"
-                  className={`absolute right-0 transition-opacity duration-200 ${
-                    scrollPercentage <= 50 &&
+                  className={`absolute right-0 transition-opacity duration-200 ${scrollPercentage <= 50 &&
                     outputRef.current?.scrollHeight >
-                      outputRef.current?.clientHeight
-                      ? "opacity-100"
-                      : "opacity-0 pointer-events-none"
-                  }`}
+                    outputRef.current?.clientHeight
+                    ? "opacity-100"
+                    : "opacity-0 pointer-events-none"
+                    }`}
                   onClick={() => {
                     outputRef.current?.scrollTo({
                       top: outputRef.current.scrollHeight,

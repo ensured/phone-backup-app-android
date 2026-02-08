@@ -196,33 +196,32 @@ export async function getFoldersInDirectory(directory) {
 }
 
 export async function getDrives() {
-  try {
-    const output = execSync(
-      "wmic logicaldisk get caption, volumename /format:List"
-    ).toString();
-    const drives = output
-      .split("\n")
-      .filter((line) => line.includes("Caption") || line.includes("VolumeName"))
-      .reduce(
-        (acc, line) => {
-          const [key, value] = line.split("=");
-          if (key.trim() === "Caption") {
-            acc.currentDrive = { letter: value.trim() }; // Store current drive letter
-          } else if (key.trim() === "VolumeName" && acc.currentDrive) {
-            acc.currentDrive.name = value.trim(); // Store corresponding drive name
-            acc.drives.push(acc.currentDrive); // Add to drives array
-            acc.currentDrive = null; // Reset for next drive
-          }
-          return acc;
-        },
-        { drives: [], currentDrive: null }
-      ).drives;
+  const drives = [];
+  // Check drive letters A-Z
+  for (let i = 65; i <= 90; i++) {
+    const letter = String.fromCharCode(i);
+    const drivePath = `${letter}:\\`;
 
-    return drives;
-  } catch (error) {
-    console.error("Error getting drives:", error);
-    return [];
+    try {
+      // Check if drive exists by trying to access it
+      fs.accessSync(drivePath, fs.constants.F_OK);
+
+      // Try to get volume label using simple approach
+      let name = 'Local Disk';
+      try {
+        // Get the first file/directory to check if drive is accessible
+        const files = fs.readdirSync(drivePath);
+        name = files.length > 0 ? 'Local Disk' : 'Empty Drive';
+      } catch {
+        // Drive exists but might be empty or inaccessible
+      }
+
+      drives.push({ letter: letter + ':', name });
+    } catch {
+      // Drive doesn't exist, skip
+    }
   }
+  return drives;
 }
 
 export async function getDeviceStatus() {
@@ -231,6 +230,10 @@ export async function getDeviceStatus() {
     const devices = await client.listDevices();
     return devices[0]?.id;
   } catch (err) {
+    // Check if the error is due to ADB not being installed
+    if (err.code === 'ENOENT' && err.message.includes('spawn adb')) {
+      return { error: 'ADB_NOT_FOUND', message: 'ADB is not installed on this system' };
+    }
     return null;
   }
 }

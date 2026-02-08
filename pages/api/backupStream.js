@@ -4,6 +4,15 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 
+// Helper to get ADB path - uses C:\adb if available, otherwise falls back to 'adb' in PATH
+const getAdbPath = () => {
+  const adbPath = 'C:\\adb\\adb.exe';
+  if (fs.existsSync(adbPath)) {
+    return adbPath;
+  }
+  return 'adb';
+};
+
 const generateTimeAgo = (timeDifferenceInSeconds) => {
   if (timeDifferenceInSeconds < 60) {
     return `${timeDifferenceInSeconds}s`;
@@ -113,7 +122,7 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
       `🔍 Scanning files in ${directory.replace("/storage/emulated/0", "")}`
     );
 
-    const items = execSync(`adb shell ls -1 "${escapedDirectory}"`)
+    const items = execSync(`"${getAdbPath()}" shell ls -1 "${escapedDirectory}"`)
       .toString()
       .trim()
       .split("\n");
@@ -140,7 +149,7 @@ async function pullFilesRecursively(sendSSE, directory, outputDir) {
             totalFiles++;
 
             // Use spawn instead of execSync to get real-time output
-            const child = spawn("adb", [
+            const child = spawn(getAdbPath(), [
               "pull",
               `${escapedDirectory}/${itemName}`,
               normalizedOutputDir,
@@ -250,13 +259,11 @@ async function backup(sendSSE, backupOptions, destinationPath) {
     const timeDifferenceInSeconds = Math.ceil((endTime - startTime) / 1000);
     const timeAgo = generateTimeAgo(timeDifferenceInSeconds);
 
-    const summaryMessage = `✅ Backup Complete|||⏱️ Time: ${timeAgo}|||📁 Files: ${
-      totalStats.files
-    }|||⏭️ Skipped: ${
-      totalStats.skipped.length
-    }|||📂 By Location:${totalStats.results
-      .map((r) => `\n• ${r.location}: ${r.files} files (${r.skipped} skipped)`)
-      .join("")}`;
+    const summaryMessage = `✅ Backup Complete|||⏱️ Time: ${timeAgo}|||📁 Files: ${totalStats.files
+      }|||⏭️ Skipped: ${totalStats.skipped.length
+      }|||📂 By Location:${totalStats.results
+        .map((r) => `\n• ${r.location}: ${r.files} files (${r.skipped} skipped)`)
+        .join("")}`;
 
     return {
       completed: true,
