@@ -147,17 +147,45 @@ export default function Backup({ success, deviceID }) {
   };
 
   async function socketInitializer() {
-    await fetch("/api/deviceStatus");
-    socket = io();
+    try {
+      await fetch("/api/deviceStatus");
+      socket = io("/", {
+        transports: ['websocket', 'polling'],
+        timeout: 5000,
+        reconnection: true,
+        reconnectionAttempts: 3,
+        reconnectionDelay: 1000,
+      });
 
-    socket.on("device-status", (data) => {
-      if (data.status === "connected") {
-        setDeviceId(data.deviceId); // Set the connected deviceId
-      }
-      if (data.status === "disconnected") {
-        setDeviceId(""); // Clear the deviceId when disconnected
-      }
-    });
+      socket.on("connect", () => {
+        console.log("Socket connected successfully");
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Socket disconnected");
+      });
+
+      socket.on("device-status", (data) => {
+        if (data.status === "connected") {
+          setDeviceId((prevId) => {
+            // Only update if different or if current ID is empty
+            if (!prevId || prevId !== data.deviceId) {
+              return data.deviceId;
+            }
+            return prevId;
+          });
+        }
+        if (data.status === "disconnected") {
+          setDeviceId(""); // Clear deviceId when disconnected
+        }
+      });
+
+      socket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+      });
+    } catch (error) {
+      console.error("Failed to initialize socket:", error);
+    }
   }
 
   useEffect(() => {
@@ -168,79 +196,60 @@ export default function Backup({ success, deviceID }) {
     }
 
     const initializeApp = async () => {
-      // First check device status, then fetch drives based on the result
+      // Always set up drives first, regardless of device status
+      const drives = await getDrives();
+      setDrives(drives);
+
+      // Check device status
       const deviceStatus = await getDeviceStatus();
       if (typeof deviceStatus === 'object' && deviceStatus?.error === 'ADB_NOT_FOUND') {
         setAdbError(deviceStatus);
-        // If ADB is not installed, set empty drives and finish loading
-        setDrives([]);
-        setLoadingPaths(false);
-        setInitialLoad(false);
       } else if (deviceStatus) {
         setDeviceId(deviceStatus); // Set the connected deviceId
         setAdbError(null); // Clear ADB error if device is now connected
-        // Only fetch drives if ADB is available
-        const drives = await getDrives();
-        setDrives(drives);
-
-        // Only set default drive if no destination is set in backupOptions
-        if (!storedOptions?.destInputValue) {
-          const defaultDrive = "C:" + "\\"; // Default drive path
-          setCheckedDrive("C"); // Set the first available drive as default
-
-          const newBackupOptions = {
-            ...backupOptions,
-            destInputValue: defaultDrive, // Set default drive here
-          };
-
-          setBackupOptions((prev) => ({
-            ...prev,
-            ...newBackupOptions,
-          }));
-
-          // Save to localStorage to persist the default drive
-          localStorage.setItem("backupOptions", JSON.stringify(newBackupOptions));
-        } else {
-          // Use the saved destination drive if available
-          const driveLetter = storedOptions.destInputValue.slice(0, 2); // Assuming drive letter is 'C:'
-          setCheckedDrive(driveLetter); // Set the checked drive based on saved destination
-        }
-        setLoadingPaths(false);
-        setInitialLoad(false); // Set initialLoad to false after fetching drives
       }
+
+      // Set up default drive if no destination is set in backupOptions
+      if (!storedOptions?.destInputValue) {
+        const defaultDrive = "C:" + "\\"; // Default drive path
+        setCheckedDrive("C"); // Set the first available drive as default
+
+        const newBackupOptions = {
+          ...backupOptions,
+          destInputValue: defaultDrive, // Set default drive here
+        };
+
+        setBackupOptions((prev) => ({
+          ...prev,
+          ...newBackupOptions,
+        }));
+
+        // Save to localStorage to persist the default drive
+        localStorage.setItem("backupOptions", JSON.stringify(newBackupOptions));
+      } else {
+        // Use the saved destination drive if available
+        const driveLetter = storedOptions.destInputValue.slice(0, 2); // Assuming drive letter is 'C:'
+        setCheckedDrive(driveLetter); // Set the checked drive based on saved destination
+      }
+
+      setLoadingPaths(false);
+      setInitialLoad(false);
       setDeviceStatusChecked(true); // Mark device status as checked
     };
 
     initializeApp();
 
-    // Re-check device status every 5 seconds if ADB error was present
-    const intervalId = setInterval(() => {
-      if (adbError) {
-        const checkDeviceStatus = async () => {
-          const deviceStatus = await getDeviceStatus();
-          if (typeof deviceStatus === 'object' && deviceStatus?.error === 'ADB_NOT_FOUND') {
-            setAdbError(deviceStatus);
-          } else if (deviceStatus) {
-            setDeviceId(deviceStatus); // Set the connected deviceId
-            setAdbError(null); // Clear ADB error if device is now connected
-          }
-        };
-        checkDeviceStatus();
-      }
-    }, 5000);
 
     if (io) {
       socketInitializer();
 
       return () => {
-        clearInterval(intervalId);
         if (socket) {
           socket.disconnect();
         }
       };
     }
 
-    return () => clearInterval(intervalId);
   }, []); // Remove adbError dependency to prevent infinite loop
 
   useEffect(() => {
@@ -286,24 +295,6 @@ export default function Backup({ success, deviceID }) {
     }
   };
 
-  // Update size estimate when backup options change
-  useEffect(() => {
-    if (deviceId && !backupStarted) {
-      const timeoutId = setTimeout(() => {
-        updateSizeEstimate();
-      }, 500); // Debounce for 500ms
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [backupOptions.Camera, backupOptions.Download, backupOptions.Pictures, deviceId]);
-
-  // Initial size estimate when device connects
-  useEffect(() => {
-    if (deviceId && !backupStarted && !sizeEstimate) {
-      updateSizeEstimate();
-    }
-  }, [deviceId]);
-
   // Function to fetch device storage
   const fetchDeviceStorage = async () => {
     if (!deviceId) return;
@@ -318,12 +309,29 @@ export default function Backup({ success, deviceID }) {
     }
   };
 
-  // Fetch device storage when device connects
+  // Combined effect for device connection - fetch storage and size estimate
   useEffect(() => {
-    if (deviceId) {
+    if (deviceId && !backupStarted && deviceStatusChecked) {
+      // Fetch device storage
       fetchDeviceStorage();
+
+      // Initial size estimate if not already fetched
+      if (!sizeEstimate) {
+        updateSizeEstimate();
+      }
     }
-  }, [deviceId]);
+  }, [deviceId, deviceStatusChecked]); // Only run when device status is fully checked
+
+  // Update size estimate when backup options change (debounced)
+  useEffect(() => {
+    if (deviceId && !backupStarted && sizeEstimate) {
+      const timeoutId = setTimeout(() => {
+        updateSizeEstimate();
+      }, 500); // Debounce for 500ms
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [backupOptions.Camera, backupOptions.Download, backupOptions.Pictures, deviceId]);
 
   const startBackup = async () => {
     setBackupStarted(true);
